@@ -65,7 +65,7 @@ Every part of the system is built in **pure HTML5/JS/CSS**, driven by a modular 
 playout-superdash/
 ├── server/                 # Node.js backend (OSC, XML, TCP + WebSocket)
 │   ├── server.js           # Main server entrypoint
-│   ├── osc-casparcg.js    # OSC listener for CasparCG
+│   ├── osc-casparcg.js     # OSC listener for CasparCG
 │   ├── vmix-client.js      # XML poller for vMix
 │   └── hyperdeck-client.js # Telnet handler for HyperDeck
 ├── public/                 # Frontend (runs in any browser)

@@ -1,0 +1,18 @@
+# Node
+node_modules/
+.env
+package-lock.json
+
+# macOS
+.DS_Store
+
+# VSCode
+.vscode/
+
+# Tauri
+/src-tauri/target/
+src-tauri/Cargo.lock
+
+# Logs
+logs/
+*.log

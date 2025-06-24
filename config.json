@@ -1,0 +1,7 @@
+{
+  "servers": [
+    { "name": "Deck 1", "ip": "192.168.1.101", "type": "hyperdeck" },
+    { "name": "Deck 2", "ip": "192.168.1.102", "type": "hyperdeck" },
+    { "name": "Caspar Channel 1", "ip": "192.168.1.150", "type": "casparcg" }
+  ]
+}

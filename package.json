@@ -1,0 +1,13 @@
+{
+  "name": "superdash",
+  "version": "1.0.0",
+  "description": "Thåst Media Playout Superimpose & Dashboard Suite",
+  "main": "server/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server/server.js"
+  },
+  "dependencies": {
+    "ws": "^8.0.0"
+  }
+}

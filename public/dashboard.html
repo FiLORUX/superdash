@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SuperDash Dashboard</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #111;
+      color: #eee;
+      font-family: 'Segoe UI', sans-serif;
+      height: 100%;
+      overflow: hidden;
+    }
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+      padding: 1rem;
+      box-sizing: border-box;
+    }
+    .deck {
+      background: #222;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      transition: background 0.3s ease;
+    }
+    .deck.play { border-left: 6px solid limegreen; }
+    .deck.rec  { border-left: 6px solid red; }
+    .deck.stop { border-left: 6px solid grey; }
+    .label { font-size: 1.2rem; font-weight: bold; margin-bottom: 0.5rem; }
+    .ip { font-size: 0.9rem; color: #aaa; margin-bottom: 1rem; }
+    .tc, .filename {
+      font-family: monospace;
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div id="grid"></div>
+  <script>
+    const socket = new WebSocket('ws://localhost:3050');
+    const grid = document.getElementById('grid');
+
+    socket.addEventListener('message', event => {
+      const message = JSON.parse(event.data);
+      if (message.type === 'playoutStates') {
+        grid.innerHTML = '';
+        message.data.forEach(dev => {
+          const card = document.createElement('div');
+          card.className = 'deck ' + dev.state;
+
+          card.innerHTML = \`
+            <div class="label">\${dev.name}</div>
+            <div class="ip">\${dev.ip}</div>
+            <div class="tc">TC: \${dev.timecode}</div>
+            <div class="filename">\${dev.filename}</div>
+          \`;
+
+          grid.appendChild(card);
+        });
+      }
+    });
+  </script>
+</body>
+</html>

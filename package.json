@@ -9,5 +9,9 @@
   },
   "dependencies": {
     "ws": "^8.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10",
+    "prettier": "^3.6.0"
   }
 }

@@ -1,7 +1,35 @@
-{
-  "servers": [
-    { "name": "Deck 1", "ip": "192.168.1.101", "type": "hyperdeck" },
-    { "name": "Deck 2", "ip": "192.168.1.102", "type": "hyperdeck" },
-    { "name": "Caspar Channel 1", "ip": "192.168.1.150", "type": "casparcg" }
-  ]
-}
+[
+  {
+    "id": 1,
+    "name": "CasparCG Main",
+    "type": "casparcg",
+    "ip": "192.168.0.101",
+    "layers": [10, 11]
+  },
+  {
+    "id": 2,
+    "name": "vMix 1",
+    "type": "vmix",
+    "ip": "192.168.0.101"
+  },
+  {
+    "id": 3,
+    "name": "HyperDeck ISO A",
+    "type": "hyperdeck",
+    "ip": "192.168.0.201"
+  },
+  {
+    "id": 4,
+    "name": "CasparCG STH 2",
+    "type": "casparcg",
+    "ip": "192.168.0.102",
+    "layers": [20]
+  },
+  {
+    "id": 5,
+    "name": "HyperDeck ISO B",
+    "type": "hyperdeck",
+    "ip": "192.168.0.202"
+  }
+  // etc, upp till 12
+]

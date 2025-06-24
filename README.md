@@ -15,7 +15,7 @@ It supports live monitoring from **CasparCG**, **vMix**, and **HyperDeck**, with
 
 * **Overlay View** — EVS-style semi-transparent real-time status overlay for multiviewer or PGM overlay
 * **GUI View** — Clean fullscreen countdown view for graphics ops or prompters
-* **Dashboard View** — Responsive grid-based layout for up to 12 playout/record devices
+* **Dashboard View** — Responsive grid-based layout for up to **12** playout/record devices
 
 Every part of the system is built in **pure HTML5/JS/CSS**, driven by a modular **Node.js backend**, and designed to be compiled into a native app via **Tauri** for Mac/Windows/Linux.
 
@@ -27,7 +27,7 @@ Every part of the system is built in **pure HTML5/JS/CSS**, driven by a modular 
 * 🔎 Fully dynamic grid layout: responsive to screen size and device count
 * 🔄 Adaptive typography and animation using `requestAnimationFrame`
 * 🎨 Pixel-free design: grid-based, no fixed units
-* 🔏 Tauri-ready: full native packaging for macOS (incl. M1/M2) & Windows
+* 🔏 Tauri-ready: full native packaging for macOS (incl. Intel, M1/M2) & Windows
 * 📂 Configurable via human-readable `config.json`
 * 📊 Modular architecture (can run browser-only, or as a unified app)
 
@@ -52,10 +52,23 @@ Every part of the system is built in **pure HTML5/JS/CSS**, driven by a modular 
 
 ### 3. Dashboard Mode (`/dashboard.html`)
 
-> Elegant responsive dashboard displaying status of up to 12 devices
+> Elegant responsive dashboard displaying status of up to **12** devices
 
 * Each card adapts in size and position
 * Shows live state, timecode, label, and sync glow
+
+---
+
+## 🧭 Configuration GUI
+
+### `/control.html`
+
+> A simple, browser-based configuration interface for setting up all devices.
+
+* Add/edit/delete playout servers (CasparCG, vMix, HyperDeck)
+* Configure name, type, and IP address
+* Automatically updates `config.json` on the backend via WebSocket
+* Designed for touchscreen or mouse control
 
 ---
 
@@ -75,6 +88,7 @@ superdash/
 │   └── dashboard.html      # Multi-device playout dashboard
 ├── config.json             # Human-editable configuration (IPs, display, labels)
 ├── package.json            # Node project config
+├── .gitignore              # Node + Tauri + editor junk
 └── README.md               # You are here
 ```
 
@@ -87,6 +101,26 @@ superdash/
 3. Open `control.html` in your browser to configure devices and launch views
 4. Test responsiveness by simulating different numbers of HyperDecks
 5. Eventually: run `npm run tauri dev` to compile into a native app
+
+---
+
+## 🧱 Developer Tools
+
+* `nodemon` for live-reloading backend (`npm run dev`)
+* `prettier` for code formatting (`npx prettier --write .`)
+* `.gitignore` excludes `node_modules/`, `.DS_Store`, Tauri builds, logs etc
+
+To install all dev tools:
+
+```bash
+npm install --save-dev nodemon prettier
+```
+
+To run development mode:
+
+```bash
+npm run dev
+```
 
 ---
 
@@ -104,6 +138,12 @@ superdash/
 **David Thåst** — Concept, UX, Broadcast Architecture
 **\[YourNameHere]** — Lead Developer
 Special thanks to the CasparCG, vMix & HyperDeck communities
+
+---
+
+## 🔐 License
+
+MIT License — Use freely, contribute openly.
 
 ---
 

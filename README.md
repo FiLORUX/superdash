@@ -62,7 +62,7 @@ Every part of the system is built in **pure HTML5/JS/CSS**, driven by a modular 
 ## 🛠️ Project Structure
 
 ```
-playout-superdash/
+superdash/
 ├── server/                 # Node.js backend (OSC, XML, TCP + WebSocket)
 │   ├── server.js           # Main server entrypoint
 │   ├── osc-casparcg.js     # OSC listener for CasparCG

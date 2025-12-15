@@ -27,3 +27,9 @@ src-tauri/Cargo.lock
 logs/
 *.log
 npm-debug.log*
+
+# AI/LLM local settings
+.claude/
+.cursor/
+.aider/
+.continue/

@@ -1,13 +1,23 @@
 # Node
 node_modules/
-.env
 package-lock.json
+
+# Environment
+.env
+.env.*
 
 # macOS
 .DS_Store
 
-# VSCode
+# Windows
+Thumbs.db
+
+# Editor files
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
 
 # Tauri
 /src-tauri/target/
@@ -16,3 +26,4 @@ src-tauri/Cargo.lock
 # Logs
 logs/
 *.log
+npm-debug.log*

@@ -1,0 +1,40 @@
+{
+  "settings": {
+    "defaultFramerate": 50,
+    "updateIntervalMs": 100,
+    "webSocketPort": 3050,
+    "defaultPorts": {
+      "hyperdeck": 9993,
+      "vmix": 8088,
+      "casparcg": 6250
+    },
+    "emberPlusPort": 9000,
+    "tslUmdDestinations": [
+      { "host": "192.168.1.100", "port": 4003 }
+    ],
+    "tslUmdScreen": 0
+  },
+  "servers": [
+    {
+      "id": 1,
+      "name": "CasparCG 1",
+      "type": "casparcg",
+      "ip": "192.168.1.10",
+      "port": 6250
+    },
+    {
+      "id": 2,
+      "name": "vMix Production",
+      "type": "vmix",
+      "ip": "192.168.1.20",
+      "port": 8088
+    },
+    {
+      "id": 3,
+      "name": "HyperDeck A",
+      "type": "hyperdeck",
+      "ip": "192.168.1.30",
+      "port": 9993
+    }
+  ]
+}

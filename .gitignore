@@ -1,6 +1,8 @@
-# Node
+# Dependencies
 node_modules/
-package-lock.json
+
+# Configuration (create from config.example.json)
+config.json
 
 # Environment
 .env
@@ -12,14 +14,14 @@ package-lock.json
 # Windows
 Thumbs.db
 
-# Editor files
+# Editors
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# Tauri
+# Tauri build output
 /src-tauri/target/
 src-tauri/Cargo.lock
 
@@ -28,8 +30,10 @@ logs/
 *.log
 npm-debug.log*
 
-# AI/LLM local settings
+# Temporary files
+tmp/
+
+# Editor and tooling
 .claude/
 .cursor/
 .aider/
-.continue/

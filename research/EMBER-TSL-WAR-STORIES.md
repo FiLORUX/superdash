@@ -1,8 +1,6 @@
-# Ember+ and TSL UMD Protocol: Real-World Experiences and War Stories
+# Ember+ and TSL UMD: War Stories
 
-> Empirical knowledge from broadcast engineering communities  
-> Research Date: 2026-01-17  
-> Sources: GitHub, Reddit, Creative COW, DVinfo, Technical Forums
+> Empirical knowledge from broadcast engineering communities
 
 ---
 

@@ -1,150 +1,262 @@
 # SuperDash
 
-**Thåst Media Playout Superimpose & Dashboard Suite**
+Real-time playout monitoring for broadcast environments.
 
 ---
 
-> A modern, highly adaptive, real-time playout monitoring and countdown system for professional broadcast, esports and event control. Designed with obsessive attention to smooth UX, operational clarity, and true grid-based elegance.
+## Overview
+
+SuperDash is a unified monitoring system for professional broadcast facilities. It aggregates state from multiple playout devices (CasparCG, vMix, HyperDeck) and distributes normalised status information via WebSocket, Ember+, and TSL UMD protocols.
+
+Designed for live television production where reliability and timing precision are non-negotiable.
 
 ---
 
-## 🔧 Overview
+## Features
 
-**SuperDash** is a hybrid real-time visualisation system tailored for live TV, OB units, and multi-source recording/graphics control environments.
-It supports live monitoring from **CasparCG**, **vMix**, and **HyperDeck**, with three distinct output modes:
-
-* **Overlay View** — EVS-style semi-transparent real-time status overlay for multiviewer or PGM overlay
-* **GUI View** — Clean fullscreen countdown view for graphics ops or prompters
-* **Dashboard View** — Responsive grid-based layout for up to **12** playout/record devices
-
-Every part of the system is built in **pure HTML5/JS/CSS**, driven by a modular **Node.js backend**, and designed to be compiled into a native app via **Tauri** for Mac/Windows/Linux.
+- **Multi-source aggregation** — CasparCG (OSC), vMix (HTTP XML), HyperDeck (TCP)
+- **Broadcast protocol output** — Ember+ provider (TCP 9000), TSL UMD v5.0 sender (UDP)
+- **Real-time dashboard** — Responsive grid layout for up to 12 devices
+- **Frame-accurate timing** — Drift-free scheduling with monotonic timestamps
+- **Health endpoint** — `/health` for operational monitoring
+- **Single-process deployment** — HTTP, WebSocket, and protocols from one server
 
 ---
 
-## 🧰 Key Features
+## Architecture
 
-* ✅ Real-time playout data from CasparCG (via OSC), vMix (XML API), HyperDeck (TCP protocol)
-* 🔎 Fully dynamic grid layout: responsive to screen size and device count
-* 🔄 Adaptive typography and animation using `requestAnimationFrame`
-* 🎨 Pixel-free design: grid-based, no fixed units
-* 🔏 Tauri-ready: full native packaging for macOS (incl. Intel, M1/M2) & Windows
-* 📂 Configurable via human-readable `config.json`
-* 📊 Modular architecture (can run browser-only, or as a unified app)
-
----
-
-## 🌐 Output Modes
-
-### 1. Overlay Mode (`/overlay.html`)
-
-> EVS-style transparent overlay: clip name, timecode, bar, state indicator (PLAY/REC/STOP)
-
-* Designed to be layered over SDI or in Multiviewers
-* Share Tech Mono font
-* Extremely smooth, non-jittery rendering
-
-### 2. GUI Mode (`/gui.html`)
-
-> Clean fullscreen countdown view with visual bar and current filename
-
-* Ideal for playout op / prompter / assist view
-* Customisable with themes and display toggles
-
-### 3. Dashboard Mode (`/dashboard.html`)
-
-> Elegant responsive dashboard displaying status of up to **12** devices
-
-* Each card adapts in size and position
-* Shows live state, timecode, label, and sync glow
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        SuperDash Server                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
+│  │  CasparCG   │  │    vMix     │  │  HyperDeck  │  ← Inputs   │
+│  │  OSC/UDP    │  │  HTTP/XML   │  │    TCP      │             │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘             │
+│         │                │                │                     │
+│         └────────────────┼────────────────┘                     │
+│                          ▼                                      │
+│                 ┌─────────────────┐                             │
+│                 │  State Manager  │                             │
+│                 └────────┬────────┘                             │
+│                          │                                      │
+│         ┌────────────────┼────────────────┐                     │
+│         ▼                ▼                ▼                     │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
+│  │  WebSocket  │  │   Ember+    │  │  TSL UMD    │  ← Outputs  │
+│  │    :3050    │  │  TCP :9000  │  │  UDP :4003  │             │
+│  └─────────────┘  └─────────────┘  └─────────────┘             │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 🧭 Configuration GUI
+## Quick Start
 
-### `/control.html`
+```bash
+# Clone and install
+git clone https://github.com/FiLORUX/superdash.git
+cd superdash
+npm install
 
-> A simple, browser-based configuration interface for setting up all devices.
+# Configure devices
+cp config.example.json config.json
+# Edit config.json with your device IPs
 
-* Add/edit/delete playout servers (CasparCG, vMix, HyperDeck)
-* Configure name, type, and IP address
-* Automatically updates `config.json` on the backend via WebSocket
-* Designed for touchscreen or mouse control
+# Start server
+npm start
+```
+
+Open `http://localhost:3050/dashboard.html` in a browser.
 
 ---
 
-## 🛠️ Project Structure
+## Configuration
+
+Copy `config.example.json` to `config.json` and adjust for your environment:
+
+```json
+{
+  "settings": {
+    "defaultFramerate": 50,
+    "updateIntervalMs": 100,
+    "webSocketPort": 3050,
+    "defaultPorts": {
+      "hyperdeck": 9993,
+      "vmix": 8088,
+      "casparcg": 6250
+    },
+    "emberPlusPort": 9000,
+    "tslUmdDestinations": [
+      { "host": "192.168.1.100", "port": 4003 }
+    ],
+    "tslUmdScreen": 0
+  },
+  "servers": [
+    {
+      "id": 1,
+      "name": "CasparCG 1",
+      "type": "casparcg",
+      "ip": "192.168.1.10"
+    }
+  ]
+}
+```
+
+### Device Types
+
+| Type | Protocol | Default Port | Notes |
+|------|----------|--------------|-------|
+| `casparcg` | OSC over UDP | 6250 | Requires OSC output enabled in CasparCG |
+| `vmix` | HTTP XML API | 8088 | Polls `/api` endpoint |
+| `hyperdeck` | TCP (Telnet-style) | 9993 | Persistent connection with keepalive |
+
+---
+
+## Output Modes
+
+### Dashboard (`/dashboard.html`)
+
+Responsive grid displaying all configured devices with live state, timecode, and filename. Scales automatically from 1 to 12 devices.
+
+### Overlay (`/overlay.html`)
+
+Transparent overlay for multiviewer integration. Shows single-device status with timecode bar and state indicator.
+
+### GUI (`/gui.html`)
+
+Fullscreen countdown view for operator displays or prompters.
+
+### Control Panel (`/control.html`)
+
+Configuration interface for adding and managing devices.
+
+---
+
+## Broadcast Protocol Integration
+
+### Ember+ Provider
+
+Exposes device state via Ember+ tree structure on TCP port 9000. Compatible with VSM, Lawo, and other broadcast control systems.
+
+**Tree Structure:**
+```
+SuperDash
+├── Info
+│   └── Version: "1.0.0"
+└── Devices
+    ├── Device_1
+    │   ├── State: "play"
+    │   ├── Timecode: "01:23:45:12"
+    │   ├── Filename: "clip.mov"
+    │   ├── Connected: true
+    │   └── Type: "casparcg"
+    └── Device_2
+        └── ...
+```
+
+### TSL UMD v5.0 Sender
+
+Sends tally state to TSL UMD displays over UDP. State mapping:
+
+| Device State | TSL Tally |
+|--------------|-----------|
+| `play` | Red (Brightness 3) |
+| `rec` | Amber (Brightness 3) |
+| `stop` | Off |
+| `offline` | Off (Dimmed) |
+
+---
+
+## Health Monitoring
+
+The `/health` endpoint provides operational status:
+
+```bash
+curl http://localhost:3050/health
+```
+
+```json
+{
+  "status": "healthy",
+  "uptime": 3600.5,
+  "version": "1.0.0",
+  "devices": {
+    "total": 5,
+    "connected": 4,
+    "list": [...]
+  },
+  "protocols": {
+    "websocket": { "clients": 2 },
+    "emberPlus": { "enabled": true, "running": true },
+    "tslUmd": { "enabled": true, "running": true }
+  },
+  "memory": { "heapUsed": 12, "heapTotal": 14, "unit": "MB" }
+}
+```
+
+Status values:
+- `healthy` — At least one device connected
+- `degraded` — No devices connected
+
+---
+
+## Development
+
+```bash
+# Development mode with auto-reload
+npm run dev
+
+# Run tests
+npm test
+
+# Format code
+npx prettier --write .
+```
+
+### Project Structure
 
 ```
 superdash/
-├── server/                 # Node.js backend (OSC, XML, TCP + WebSocket)
-│   ├── server.js           # Main server entrypoint
-│   ├── osc-casparcg.js     # OSC listener for CasparCG
-│   ├── vmix-client.js      # XML poller for vMix
-│   └── hyperdeck-client.js # Telnet handler for HyperDeck
-├── public/                 # Frontend (runs in any browser)
-│   ├── control.html        # GUI for config, IP setup, mode switching
-│   ├── overlay.html        # EVS-style transparent overlay
-│   ├── gui.html            # Fullscreen countdown display
-│   └── dashboard.html      # Multi-device playout dashboard
-├── config.json             # Human-editable configuration (IPs, display, labels)
-├── package.json            # Node project config
-├── .gitignore              # Node + Tauri + editor junk
-└── README.md               # You are here
+├── server/
+│   ├── server.js              # Main entry point
+│   ├── hyperdeck-client.js    # HyperDeck TCP client
+│   ├── vmix-client.js         # vMix HTTP poller
+│   ├── osc-casparcg.js        # CasparCG OSC listener
+│   ├── emberplus-provider.js  # Ember+ tree provider
+│   ├── tsl-umd-sender.js      # TSL UMD v5.0 sender
+│   └── __tests__/             # Jest test suites
+├── public/
+│   ├── dashboard.html         # Multi-device grid
+│   ├── overlay.html           # Transparent overlay
+│   ├── gui.html               # Fullscreen countdown
+│   └── control.html           # Configuration panel
+├── research/                  # Protocol documentation
+├── config.example.json        # Configuration template
+└── package.json
 ```
 
 ---
 
-## ⚙️ Development Flow
+## Requirements
 
-1. Clone repo and run: `npm install`
-2. Start server: `node server/server.js`
-3. Open `control.html` in your browser to configure devices and launch views
-4. Test responsiveness by simulating different numbers of HyperDecks
-5. Eventually: run `npm run tauri dev` to compile into a native app
-
----
-
-## 🧱 Developer Tools
-
-* `nodemon` for live-reloading backend (`npm run dev`)
-* `prettier` for code formatting (`npx prettier --write .`)
-* `.gitignore` excludes `node_modules/`, `.DS_Store`, Tauri builds, logs etc
-
-To install all dev tools:
-
-```bash
-npm install --save-dev nodemon prettier
-```
-
-To run development mode:
-
-```bash
-npm run dev
-```
+- Node.js 18 LTS or later
+- Network access to playout devices
+- UDP port 6250 open for CasparCG OSC (if used)
+- TCP port 9000 available for Ember+ provider
 
 ---
 
-## 📊 Planned Enhancements
+## License
 
-* ⏲ Countdown sync from incoming Timecode / LTC
-* 🔔 Audio cue trigger on playout events (rec start / end)
-* 🌍 Remote-sync mode for distributed deployments
-* 🌊 Custom theming, dark/light style toggles
+MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-## 👥 Authors & Credits
+## Acknowledgements
 
-**David Thåst** — Concept, UX, Broadcast Architecture
-**\[YourNameHere]** — Lead Developer
-Special thanks to the CasparCG, vMix & HyperDeck communities
+Built for broadcast environments where downtime is not an option.
 
----
-
-## 🔐 License
-
-MIT License — Use freely, contribute openly.
-
----
-
-> "Everything must be smooth, readable, and elegant. Always." — D.T.
+Protocol documentation sourced from Lawo (Ember+) and TSL Products (UMD).

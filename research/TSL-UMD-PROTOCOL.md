@@ -1,9 +1,6 @@
-# TSL UMD Protocol Research Document
+# TSL UMD Protocol Reference
 
-> Production Broadcast Tally System Implementation Guide
-
-Generated: 2026-01-17
-Source: Official TSL Products documentation, GitHub implementations, broadcast vendor guides
+> Implementation guide for broadcast tally systems
 
 ---
 

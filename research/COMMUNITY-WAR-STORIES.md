@@ -1,9 +1,6 @@
-# Broadcast Community War Stories
+# Broadcast Protocol Pitfalls
 
-> Real-World Experiences with Ember+ and TSL UMD
-
-Generated: 2026-01-17
-Source: Reddit, GitHub Issues, Broadcast Forums, Vendor Documentation
+> Real-world experiences with Ember+ and TSL UMD implementations
 
 ---
 

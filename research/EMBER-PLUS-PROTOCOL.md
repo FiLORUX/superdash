@@ -1,9 +1,6 @@
-# Ember+ Protocol Research Document
+# Ember+ Protocol Reference
 
-> Production Broadcast Monitoring System Implementation Guide
-
-Generated: 2026-01-17
-Source: Official Lawo Ember+ GitHub Repository, community implementations, broadcast engineering forums
+> Implementation guide for broadcast monitoring systems
 
 ---
 

@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SuperDash GUI</title>
+  <style>
+    /*
+     * SuperDash Fullscreen Countdown Display
+     *
+     * Designed for broadcast monitoring with true black background
+     * for optimal use on studio displays and confidence monitors.
+     * Uses vh/vw units for responsive scaling across display sizes.
+     */
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #fff;
+      /* Prevent text selection for cleaner display appearance */
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Main container - centred flex layout */
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      width: 100vw;
+      padding: 2vh 4vw;
+    }
+
+    /* Filename display - positioned above timecode */
+    .filename {
+      font-size: 3.5vh;
+      color: #aaa;
+      text-align: center;
+      max-width: 90vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-bottom: 1vh;
+      opacity: 1;
+      transition: opacity 0.3s ease, color 0.3s ease;
+    }
+
+    .filename.empty {
+      opacity: 0.3;
+      color: #555;
+    }
+
+    /* Timecode display - very prominent, monospace font */
+    .timecode {
+      font-family: 'SF Mono', 'Consolas', 'Monaco', 'Menlo', 'Courier New', monospace;
+      font-size: 14vh;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: #fff;
+      text-align: center;
+      line-height: 1;
+      /* Prevent layout shifts when digits change */
+      font-variant-numeric: tabular-nums;
+      transition: color 0.3s ease;
+    }
+
+    /* Dimmed timecode for offline/stop states */
+    .timecode.dimmed {
+      color: #444;
+    }
+
+    /* Progress bar container */
+    .progress-container {
+      width: 60vw;
+      max-width: 800px;
+      margin-top: 3vh;
+      opacity: 1;
+      transition: opacity 0.3s ease;
+    }
+
+    .progress-container.hidden {
+      opacity: 0;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 1.5vh;
+      background: #222;
+      border-radius: 0.75vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00c853, #69f0ae);
+      border-radius: 0.75vh;
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    /* Recording state progress bar colour */
+    .progress-fill.recording {
+      background: linear-gradient(90deg, #ff1744, #ff5252);
+    }
+
+    .progress-text {
+      font-size: 2vh;
+      color: #777;
+      text-align: center;
+      margin-top: 0.8vh;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* State badge - colour-coded status indicator */
+    .state-badge {
+      margin-top: 4vh;
+      padding: 1.2vh 3vw;
+      font-size: 2.5vh;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      border-radius: 0.6vh;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* State colour variants */
+    .state-badge.play {
+      background: #00c853;
+      color: #000;
+    }
+
+    .state-badge.rec {
+      background: #ff1744;
+      color: #fff;
+      /* Pulsing animation for recording state */
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    .state-badge.stop {
+      background: #424242;
+      color: #999;
+    }
+
+    .state-badge.offline {
+      background: #1a1a1a;
+      color: #555;
+      border: 2px solid #333;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* No signal overlay - shown when device is offline */
+    .no-signal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+    }
+
+    .no-signal.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .no-signal-text {
+      font-size: 8vh;
+      font-weight: 700;
+      color: #ff1744;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .no-signal-subtext {
+      font-size: 2.5vh;
+      color: #666;
+      margin-top: 2vh;
+    }
+
+    /* Device selector overlay */
+    .device-selector {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .device-selector.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .device-selector h2 {
+      font-size: 4vh;
+      margin-bottom: 4vh;
+      color: #fff;
+    }
+
+    .device-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5vh;
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+
+    .device-item {
+      padding: 2vh 4vw;
+      background: #1a1a1a;
+      border: 2px solid #333;
+      border-radius: 1vh;
+      cursor: pointer;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+      min-width: 30vw;
+      text-align: center;
+    }
+
+    .device-item:hover {
+      background: #252525;
+      border-color: #555;
+    }
+
+    .device-item.selected {
+      border-color: #00c853;
+      background: #0a2a0a;
+    }
+
+    .device-item-name {
+      font-size: 2.5vh;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .device-item-type {
+      font-size: 1.8vh;
+      color: #777;
+      margin-top: 0.5vh;
+      text-transform: uppercase;
+    }
+
+    /* Connection status indicator - small dot in corner */
+    .connection-indicator {
+      position: fixed;
+      bottom: 2vh;
+      right: 2vw;
+      width: 1.2vh;
+      height: 1.2vh;
+      border-radius: 50%;
+      background: #ff1744;
+      transition: background-color 0.3s ease;
+    }
+
+    .connection-indicator.connected {
+      background: #00c853;
+    }
+
+    /* Device name in corner for reference */
+    .device-name-label {
+      position: fixed;
+      bottom: 2vh;
+      left: 2vw;
+      font-size: 1.8vh;
+      color: #444;
+      max-width: 40vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Keyboard hints shown in selector */
+    .keyboard-hints {
+      margin-top: 4vh;
+      font-size: 1.6vh;
+      color: #555;
+    }
+
+    .keyboard-hints kbd {
+      background: #333;
+      padding: 0.3vh 0.8vw;
+      border-radius: 0.3vh;
+      margin: 0 0.3vw;
+    }
+  </style>
+</head>
+<body>
+  <!-- Main display container -->
+  <div class="container">
+    <div class="filename" id="filename">Loading...</div>
+    <div class="timecode" id="timecode">--:--:--:--</div>
+    <div class="progress-container hidden" id="progressContainer">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-text" id="progressText">0%</div>
+    </div>
+    <div class="state-badge offline" id="stateBadge">OFFLINE</div>
+  </div>
+
+  <!-- No signal overlay -->
+  <div class="no-signal" id="noSignal">
+    <div class="no-signal-text">No Signal</div>
+    <div class="no-signal-subtext" id="noSignalSubtext">Device offline</div>
+  </div>
+
+  <!-- Device selector overlay -->
+  <div class="device-selector" id="deviceSelector">
+    <h2>Select Device</h2>
+    <div class="device-list" id="deviceList"></div>
+    <div class="keyboard-hints">
+      <kbd>&#8592;</kbd><kbd>&#8594;</kbd> Switch device
+      <kbd>Esc</kbd> Close
+    </div>
+  </div>
+
+  <!-- Connection and device indicators -->
+  <div class="connection-indicator" id="connectionIndicator"></div>
+  <div class="device-name-label" id="deviceNameLabel">--</div>
+
+  <script>
+    /**
+     * SuperDash GUI - Fullscreen Countdown/Status Display
+     *
+     * Connects to the SuperDash WebSocket server and displays
+     * timecode, filename, and state for a selected playout device.
+     *
+     * Features:
+     * - WebSocket with exponential backoff reconnection
+     * - URL parameter device selection (?device=0)
+     * - Keyboard navigation between devices
+     * - Differential updates to prevent flicker
+     * - XSS-safe rendering using textContent
+     */
+
+    'use strict';
+
+    // -------------------------------------------------------------------------
+    // Configuration
+    // -------------------------------------------------------------------------
+
+    const WS_PORT = 3050;
+    const WS_HOST = location.hostname || 'localhost';
+    const WS_URL = `ws://${WS_HOST}:${WS_PORT}`;
+
+    // Reconnection settings (exponential backoff)
+    const RECONNECT_BASE_MS = 1000;
+    const RECONNECT_MAX_MS = 30000;
+    const RECONNECT_MULTIPLIER = 1.5;
+
+    // -------------------------------------------------------------------------
+    // State
+    // -------------------------------------------------------------------------
+
+    let ws = null;
+    let reconnectAttempts = 0;
+    let reconnectTimeout = null;
+    let devices = [];
+    let selectedDeviceIndex = 0;
+    let selectorVisible = false;
+
+    // Cached references to DOM elements (avoid repeated queries)
+    const elements = {
+      filename: document.getElementById('filename'),
+      timecode: document.getElementById('timecode'),
+      progressContainer: document.getElementById('progressContainer'),
+      progressFill: document.getElementById('progressFill'),
+      progressText: document.getElementById('progressText'),
+      stateBadge: document.getElementById('stateBadge'),
+      noSignal: document.getElementById('noSignal'),
+      noSignalSubtext: document.getElementById('noSignalSubtext'),
+      deviceSelector: document.getElementById('deviceSelector'),
+      deviceList: document.getElementById('deviceList'),
+      connectionIndicator: document.getElementById('connectionIndicator'),
+      deviceNameLabel: document.getElementById('deviceNameLabel')
+    };
+
+    // Previous state for differential updates
+    let previousState = {
+      filename: null,
+      timecode: null,
+      state: null,
+      progress: null,
+      connected: null,
+      deviceName: null
+    };
+
+    // -------------------------------------------------------------------------
+    // URL Parameter Parsing
+    // -------------------------------------------------------------------------
+
+    /**
+     * Parses the device index from URL query parameters.
+     * Falls back to 0 (first device) if not specified or invalid.
+     *
+     * @returns {number} Device index (0-based)
+     */
+    function getDeviceIndexFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const deviceParam = params.get('device');
+
+      if (deviceParam !== null) {
+        const index = parseInt(deviceParam, 10);
+        if (!isNaN(index) && index >= 0) {
+          return index;
+        }
+      }
+
+      return 0;
+    }
+
+    /**
+     * Updates the URL query parameter without page reload.
+     *
+     * @param {number} index - Device index
+     */
+    function updateUrlParameter(index) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('device', index.toString());
+      window.history.replaceState({}, '', url.toString());
+    }
+
+    // -------------------------------------------------------------------------
+    // WebSocket Connection
+    // -------------------------------------------------------------------------
+
+    /**
+     * Establishes WebSocket connection with automatic reconnection.
+     * Uses exponential backoff to prevent server flooding.
+     */
+    function connect() {
+      if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
+        return;
+      }
+
+      console.log(`[ws] Connecting to ${WS_URL}...`);
+
+      try {
+        ws = new WebSocket(WS_URL);
+      } catch (error) {
+        console.error('[ws] Failed to create WebSocket:', error.message);
+        scheduleReconnect();
+        return;
+      }
+
+      ws.addEventListener('open', handleOpen);
+      ws.addEventListener('message', handleMessage);
+      ws.addEventListener('close', handleClose);
+      ws.addEventListener('error', handleError);
+    }
+
+    /**
+     * Handles successful WebSocket connection.
+     */
+    function handleOpen() {
+      console.log('[ws] Connected');
+      reconnectAttempts = 0;
+      updateConnectionIndicator(true);
+    }
+
+    /**
+     * Handles incoming WebSocket messages.
+     *
+     * @param {MessageEvent} event - WebSocket message event
+     */
+    function handleMessage(event) {
+      try {
+        const message = JSON.parse(event.data);
+
+        if (message.type === 'playoutStates' && Array.isArray(message.data)) {
+          devices = message.data;
+          updateDisplay();
+        }
+      } catch (error) {
+        console.error('[ws] Failed to parse message:', error.message);
+      }
+    }
+
+    /**
+     * Handles WebSocket connection closure.
+     *
+     * @param {CloseEvent} event - WebSocket close event
+     */
+    function handleClose(event) {
+      console.log(`[ws] Connection closed (code: ${event.code})`);
+      updateConnectionIndicator(false);
+      scheduleReconnect();
+    }
+
+    /**
+     * Handles WebSocket errors.
+     *
+     * @param {Event} error - WebSocket error event
+     */
+    function handleError(error) {
+      console.error('[ws] WebSocket error:', error);
+      updateConnectionIndicator(false);
+    }
+
+    /**
+     * Schedules a reconnection attempt with exponential backoff.
+     */
+    function scheduleReconnect() {
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+
+      const delay = Math.min(
+        RECONNECT_BASE_MS * Math.pow(RECONNECT_MULTIPLIER, reconnectAttempts),
+        RECONNECT_MAX_MS
+      );
+
+      console.log(`[ws] Reconnecting in ${Math.round(delay)}ms (attempt ${reconnectAttempts + 1})`);
+
+      reconnectTimeout = setTimeout(() => {
+        reconnectAttempts++;
+        connect();
+      }, delay);
+    }
+
+    // -------------------------------------------------------------------------
+    // Display Updates (Differential to prevent flicker)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Updates the display with current device state.
+     * Uses differential updates to only modify changed elements.
+     */
+    function updateDisplay() {
+      // Ensure selected index is within bounds
+      if (selectedDeviceIndex >= devices.length) {
+        selectedDeviceIndex = devices.length > 0 ? devices.length - 1 : 0;
+      }
+
+      const device = devices[selectedDeviceIndex];
+
+      if (!device) {
+        showNoSignal('No devices available');
+        return;
+      }
+
+      // Update device name label (differential)
+      if (previousState.deviceName !== device.name) {
+        elements.deviceNameLabel.textContent = device.name;
+        previousState.deviceName = device.name;
+      }
+
+      // Handle offline/disconnected state
+      if (device.state === 'offline' || !device.connected) {
+        showNoSignal(`${device.name} - Offline`);
+        return;
+      }
+
+      // Hide no signal overlay
+      hideNoSignal();
+
+      // Update filename (differential)
+      const displayFilename = device.filename || 'No clip loaded';
+      if (previousState.filename !== displayFilename) {
+        elements.filename.textContent = displayFilename;
+        elements.filename.classList.toggle('empty', !device.filename);
+        previousState.filename = displayFilename;
+      }
+
+      // Update timecode (differential)
+      if (previousState.timecode !== device.timecode) {
+        elements.timecode.textContent = device.timecode || '--:--:--:--';
+        previousState.timecode = device.timecode;
+      }
+
+      // Update timecode styling based on state
+      const isDimmed = device.state === 'stop' || device.state === 'offline';
+      elements.timecode.classList.toggle('dimmed', isDimmed);
+
+      // Update state badge (differential)
+      if (previousState.state !== device.state) {
+        updateStateBadge(device.state);
+        previousState.state = device.state;
+      }
+
+      // Update progress bar if duration is available
+      // Note: Progress calculation requires duration data which may not be available
+      // from all device types. Show progress bar only when we have valid data.
+      updateProgressBar(device);
+    }
+
+    /**
+     * Updates the state badge with appropriate styling.
+     *
+     * @param {string} state - Device state (play, rec, stop, offline)
+     */
+    function updateStateBadge(state) {
+      const badge = elements.stateBadge;
+
+      // Remove all state classes
+      badge.classList.remove('play', 'rec', 'stop', 'offline');
+
+      // Map internal state to display text and class
+      const stateMap = {
+        'play': { text: 'PLAY', className: 'play' },
+        'rec': { text: 'REC', className: 'rec' },
+        'stop': { text: 'STOP', className: 'stop' },
+        'offline': { text: 'OFFLINE', className: 'offline' }
+      };
+
+      const config = stateMap[state] || stateMap['offline'];
+      badge.textContent = config.text;
+      badge.classList.add(config.className);
+    }
+
+    /**
+     * Updates the progress bar based on device state.
+     * Currently shows/hides based on play/rec state.
+     * Actual progress calculation would require position/duration data.
+     *
+     * @param {Object} device - Device state object
+     */
+    function updateProgressBar(device) {
+      // Progress bar requires position and duration data
+      // For now, show it during playback/recording states
+      // with placeholder behaviour. Real implementation would use
+      // device.position and device.duration if available.
+
+      const showProgress = (device.state === 'play' || device.state === 'rec') &&
+                           device.duration && device.duration > 0;
+
+      if (showProgress) {
+        const progress = device.position && device.duration
+          ? Math.min(100, (device.position / device.duration) * 100)
+          : 0;
+
+        if (previousState.progress !== progress) {
+          elements.progressFill.style.width = `${progress}%`;
+          elements.progressText.textContent = `${Math.round(progress)}%`;
+          previousState.progress = progress;
+        }
+
+        elements.progressFill.classList.toggle('recording', device.state === 'rec');
+        elements.progressContainer.classList.remove('hidden');
+      } else {
+        elements.progressContainer.classList.add('hidden');
+      }
+    }
+
+    /**
+     * Shows the no signal overlay with a custom message.
+     *
+     * @param {string} message - Message to display
+     */
+    function showNoSignal(message) {
+      elements.noSignalSubtext.textContent = message;
+      elements.noSignal.classList.add('visible');
+
+      // Dim the main display
+      elements.timecode.textContent = '--:--:--:--';
+      elements.timecode.classList.add('dimmed');
+      elements.filename.textContent = '';
+      elements.filename.classList.add('empty');
+      updateStateBadge('offline');
+    }
+
+    /**
+     * Hides the no signal overlay.
+     */
+    function hideNoSignal() {
+      elements.noSignal.classList.remove('visible');
+    }
+
+    /**
+     * Updates the connection status indicator.
+     *
+     * @param {boolean} connected - Whether WebSocket is connected
+     */
+    function updateConnectionIndicator(connected) {
+      elements.connectionIndicator.classList.toggle('connected', connected);
+      previousState.connected = connected;
+    }
+
+    // -------------------------------------------------------------------------
+    // Device Selector
+    // -------------------------------------------------------------------------
+
+    /**
+     * Shows the device selector overlay.
+     */
+    function showDeviceSelector() {
+      renderDeviceList();
+      elements.deviceSelector.classList.add('visible');
+      selectorVisible = true;
+    }
+
+    /**
+     * Hides the device selector overlay.
+     */
+    function hideDeviceSelector() {
+      elements.deviceSelector.classList.remove('visible');
+      selectorVisible = false;
+    }
+
+    /**
+     * Renders the device list in the selector overlay.
+     * Uses textContent for XSS safety.
+     */
+    function renderDeviceList() {
+      // Clear existing items
+      elements.deviceList.innerHTML = '';
+
+      devices.forEach((device, index) => {
+        const item = document.createElement('div');
+        item.className = 'device-item';
+
+        if (index === selectedDeviceIndex) {
+          item.classList.add('selected');
+        }
+
+        // Create name element (XSS-safe)
+        const nameEl = document.createElement('div');
+        nameEl.className = 'device-item-name';
+        nameEl.textContent = device.name;
+
+        // Create type element (XSS-safe)
+        const typeEl = document.createElement('div');
+        typeEl.className = 'device-item-type';
+        typeEl.textContent = `${device.type} - ${device.state}`;
+
+        item.appendChild(nameEl);
+        item.appendChild(typeEl);
+
+        // Click handler
+        item.addEventListener('click', () => {
+          selectDevice(index);
+          hideDeviceSelector();
+        });
+
+        elements.deviceList.appendChild(item);
+      });
+
+      // Handle empty device list
+      if (devices.length === 0) {
+        const emptyItem = document.createElement('div');
+        emptyItem.className = 'device-item';
+        emptyItem.textContent = 'No devices available';
+        elements.deviceList.appendChild(emptyItem);
+      }
+    }
+
+    /**
+     * Selects a device by index and updates the display.
+     *
+     * @param {number} index - Device index
+     */
+    function selectDevice(index) {
+      if (index < 0 || index >= devices.length) {
+        return;
+      }
+
+      selectedDeviceIndex = index;
+      updateUrlParameter(index);
+
+      // Reset previous state to force full update
+      previousState = {
+        filename: null,
+        timecode: null,
+        state: null,
+        progress: null,
+        connected: previousState.connected,
+        deviceName: null
+      };
+
+      updateDisplay();
+    }
+
+    /**
+     * Cycles to the next device.
+     */
+    function nextDevice() {
+      if (devices.length === 0) return;
+      const newIndex = (selectedDeviceIndex + 1) % devices.length;
+      selectDevice(newIndex);
+
+      if (selectorVisible) {
+        renderDeviceList();
+      }
+    }
+
+    /**
+     * Cycles to the previous device.
+     */
+    function previousDevice() {
+      if (devices.length === 0) return;
+      const newIndex = (selectedDeviceIndex - 1 + devices.length) % devices.length;
+      selectDevice(newIndex);
+
+      if (selectorVisible) {
+        renderDeviceList();
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // Keyboard Navigation
+    // -------------------------------------------------------------------------
+
+    /**
+     * Handles keyboard events for device navigation.
+     *
+     * @param {KeyboardEvent} event - Keyboard event
+     */
+    function handleKeydown(event) {
+      switch (event.key) {
+        case 'ArrowRight':
+          event.preventDefault();
+          nextDevice();
+          break;
+
+        case 'ArrowLeft':
+          event.preventDefault();
+          previousDevice();
+          break;
+
+        case 'Escape':
+          event.preventDefault();
+          if (selectorVisible) {
+            hideDeviceSelector();
+          } else {
+            showDeviceSelector();
+          }
+          break;
+
+        case 'Enter':
+          if (selectorVisible) {
+            event.preventDefault();
+            hideDeviceSelector();
+          }
+          break;
+
+        case 'ArrowUp':
+          if (selectorVisible) {
+            event.preventDefault();
+            previousDevice();
+          }
+          break;
+
+        case 'ArrowDown':
+          if (selectorVisible) {
+            event.preventDefault();
+            nextDevice();
+          }
+          break;
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // Initialisation
+    // -------------------------------------------------------------------------
+
+    /**
+     * Initialises the GUI application.
+     */
+    function init() {
+      // Parse device index from URL
+      selectedDeviceIndex = getDeviceIndexFromUrl();
+
+      // Set up keyboard navigation
+      document.addEventListener('keydown', handleKeydown);
+
+      // Connect to WebSocket server
+      connect();
+
+      // Set page title based on URL parameter if we have a device
+      document.title = `SuperDash GUI - Device ${selectedDeviceIndex}`;
+    }
+
+    // Start the application
+    init();
+  </script>
+</body>
+</html>

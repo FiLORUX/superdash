@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SuperDash Overlay</title>
+  <style>
+    /**
+     * SuperDash Overlay Styles
+     *
+     * Designed for SDI keying and multiviewer compositing.
+     * Transparent background allows clean chroma/luma keying.
+     * Hardware-accelerated animations avoid frame-sync jitter.
+     */
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      /* Transparent for SDI keying - this is the key requirement */
+      background: transparent;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* Overlay container - positioned in corner based on URL parameter */
+    #overlay {
+      position: fixed;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      /* backdrop-filter provides subtle blur behind overlay */
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      /* Default opacity, overridden by URL parameter */
+      background: rgba(0, 0, 0, var(--overlay-opacity, 0.85));
+      /* Smooth fade for visibility transitions */
+      transition: opacity 0.3s ease;
+      /* Minimum width to prevent layout jitter */
+      min-width: 200px;
+      /* Hardware acceleration hint */
+      will-change: opacity;
+    }
+
+    /* Position variants - applied via JavaScript based on URL parameter */
+    #overlay.bottom-left {
+      bottom: 20px;
+      left: 20px;
+    }
+
+    #overlay.bottom-right {
+      bottom: 20px;
+      right: 20px;
+    }
+
+    #overlay.top-left {
+      top: 20px;
+      left: 20px;
+    }
+
+    #overlay.top-right {
+      top: 20px;
+      right: 20px;
+    }
+
+    /* Fade out state when data goes stale */
+    #overlay.faded {
+      opacity: 0.3;
+    }
+
+    /* Hidden state for complete fadeout */
+    #overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Content layout - horizontal flex for compact display */
+    .overlay-content {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #fff;
+    }
+
+    /* State indicator dot */
+    .state-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      /* Hardware acceleration for pulse animation */
+      will-change: opacity, transform;
+    }
+
+    /* State colour variants */
+    .state-dot.play {
+      background: limegreen;
+    }
+
+    .state-dot.rec {
+      background: #f00;
+      /* Pulsing animation for recording state */
+      animation: pulse-rec 1s ease-in-out infinite;
+    }
+
+    .state-dot.stop {
+      background: #666;
+    }
+
+    .state-dot.offline {
+      background: #444;
+    }
+
+    /* Recording pulse animation - hardware accelerated via opacity and transform */
+    @keyframes pulse-rec {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.6;
+        transform: scale(0.9);
+      }
+    }
+
+    /* Timecode display - monospace for consistent character width */
+    .timecode {
+      font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+      font-size: 1.1rem;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    /* Filename display - truncated if too long */
+    .filename {
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.8);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 200px;
+    }
+
+    /* OFFLINE indicator text */
+    .offline-text {
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+  </style>
+</head>
+<body>
+  <div id="overlay" class="bottom-left">
+    <div class="overlay-content">
+      <div id="state-dot" class="state-dot stop"></div>
+      <div id="timecode" class="timecode">00:00:00:00</div>
+      <div id="filename" class="filename"></div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * SuperDash Overlay Client
+     *
+     * Compact overlay designed for multiviewer compositing and SDI keying.
+     * Shows minimal device information with high legibility.
+     *
+     * URL Parameters:
+     * - device: Device index to display (default: 0)
+     * - opacity: Background opacity 0-1 (default: 0.85)
+     * - position: Corner position (bottom-left, bottom-right, top-left, top-right)
+     * - fadeTimeout: Seconds until fade on no data (default: 3, 0 = disabled)
+     *
+     * Architecture:
+     * - WebSocket connection with exponential backoff reconnection
+     * - Differential DOM updates to prevent flicker
+     * - XSS-safe using textContent exclusively
+     * - Transparent background for video keying
+     */
+
+    // -------------------------------------------------------------------------
+    // Configuration
+    // -------------------------------------------------------------------------
+
+    const CONFIG = {
+      wsUrl: `ws://${location.hostname || 'localhost'}:3050`,
+      reconnectBaseDelay: 1000,
+      reconnectMaxDelay: 30000,
+      // Parse URL parameters with defaults
+      deviceIndex: parseInt(new URLSearchParams(location.search).get('device') ?? '0', 10),
+      opacity: parseFloat(new URLSearchParams(location.search).get('opacity') ?? '0.85'),
+      position: new URLSearchParams(location.search).get('position') ?? 'bottom-left',
+      fadeTimeoutSec: parseFloat(new URLSearchParams(location.search).get('fadeTimeout') ?? '3')
+    };
+
+    // Clamp and validate parameters
+    CONFIG.opacity = Math.max(0, Math.min(1, CONFIG.opacity));
+    CONFIG.deviceIndex = Math.max(0, CONFIG.deviceIndex);
+    CONFIG.fadeTimeoutSec = Math.max(0, CONFIG.fadeTimeoutSec);
+
+    // Valid positions
+    const VALID_POSITIONS = ['bottom-left', 'bottom-right', 'top-left', 'top-right'];
+    if (!VALID_POSITIONS.includes(CONFIG.position)) {
+      console.warn(`[overlay] Invalid position "${CONFIG.position}", defaulting to bottom-left`);
+      CONFIG.position = 'bottom-left';
+    }
+
+    console.log('[overlay] Configuration:', {
+      wsUrl: CONFIG.wsUrl,
+      deviceIndex: CONFIG.deviceIndex,
+      opacity: CONFIG.opacity,
+      position: CONFIG.position,
+      fadeTimeoutSec: CONFIG.fadeTimeoutSec
+    });
+
+    // -------------------------------------------------------------------------
+    // State
+    // -------------------------------------------------------------------------
+
+    /** @type {WebSocket|null} */
+    let socket = null;
+
+    /** @type {number} */
+    let reconnectAttempt = 0;
+
+    /** @type {number|null} */
+    let reconnectTimeout = null;
+
+    /** @type {number|null} */
+    let fadeTimeout = null;
+
+    /** @type {number} */
+    let lastUpdateTime = Date.now();
+
+    /**
+     * Cached DOM state to prevent unnecessary updates.
+     * Only update DOM when values actually change.
+     */
+    const cachedState = {
+      state: null,
+      timecode: null,
+      filename: null,
+      isOffline: null
+    };
+
+    // -------------------------------------------------------------------------
+    // DOM References
+    // -------------------------------------------------------------------------
+
+    const overlay = document.getElementById('overlay');
+    const stateDot = document.getElementById('state-dot');
+    const timecodeEl = document.getElementById('timecode');
+    const filenameEl = document.getElementById('filename');
+
+    // -------------------------------------------------------------------------
+    // Initialisation
+    // -------------------------------------------------------------------------
+
+    /**
+     * Applies configuration to DOM elements.
+     * Called once on page load.
+     */
+    function applyConfiguration() {
+      // Set CSS custom property for background opacity
+      overlay.style.setProperty('--overlay-opacity', CONFIG.opacity);
+
+      // Apply position class
+      overlay.className = CONFIG.position;
+
+      console.log('[overlay] Applied position:', CONFIG.position);
+      console.log('[overlay] Applied opacity:', CONFIG.opacity);
+    }
+
+    // -------------------------------------------------------------------------
+    // WebSocket Connection
+    // -------------------------------------------------------------------------
+
+    /**
+     * Establishes WebSocket connection to the server.
+     */
+    function connect() {
+      if (socket && (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN)) {
+        return;
+      }
+
+      console.log(`[overlay] Connecting to ${CONFIG.wsUrl}`);
+
+      try {
+        socket = new WebSocket(CONFIG.wsUrl);
+      } catch (error) {
+        console.error('[overlay] Failed to create WebSocket:', error.message);
+        scheduleReconnect();
+        return;
+      }
+
+      socket.addEventListener('open', handleOpen);
+      socket.addEventListener('message', handleMessage);
+      socket.addEventListener('close', handleClose);
+      socket.addEventListener('error', handleError);
+    }
+
+    /**
+     * Handles successful WebSocket connection.
+     */
+    function handleOpen() {
+      console.log('[overlay] Connected');
+      reconnectAttempt = 0;
+      // Connection established - data should arrive soon
+      resetFadeTimeout();
+    }
+
+    /**
+     * Handles incoming WebSocket messages.
+     * @param {MessageEvent} event
+     */
+    function handleMessage(event) {
+      let message;
+      try {
+        message = JSON.parse(event.data);
+      } catch (error) {
+        console.error('[overlay] Failed to parse message:', error.message);
+        return;
+      }
+
+      if (message.type === 'playoutStates' && Array.isArray(message.data)) {
+        handlePlayoutStates(message.data, message.timestamp);
+      }
+    }
+
+    /**
+     * Handles WebSocket close event.
+     */
+    function handleClose() {
+      console.log('[overlay] Disconnected');
+      socket = null;
+      // Show offline state when disconnected from server
+      updateOverlay({
+        state: 'offline',
+        timecode: '--:--:--:--',
+        filename: '',
+        connected: false
+      });
+      scheduleReconnect();
+    }
+
+    /**
+     * Handles WebSocket error event.
+     * @param {Event} event
+     */
+    function handleError(event) {
+      console.error('[overlay] WebSocket error');
+      // Close event will follow and trigger reconnect
+    }
+
+    /**
+     * Schedules a reconnection attempt with exponential backoff.
+     */
+    function scheduleReconnect() {
+      if (reconnectTimeout) {
+        return; // Already scheduled
+      }
+
+      const delay = Math.min(
+        CONFIG.reconnectBaseDelay * Math.pow(2, reconnectAttempt),
+        CONFIG.reconnectMaxDelay
+      );
+
+      reconnectAttempt++;
+      console.log(`[overlay] Reconnecting in ${delay / 1000}s (attempt ${reconnectAttempt})`);
+
+      reconnectTimeout = setTimeout(() => {
+        reconnectTimeout = null;
+        connect();
+      }, delay);
+    }
+
+    // -------------------------------------------------------------------------
+    // State Processing
+    // -------------------------------------------------------------------------
+
+    /**
+     * Processes incoming playout states from server.
+     * Selects the configured device and updates the overlay.
+     *
+     * @param {Array<Object>} devices - Array of device state objects
+     * @param {number} timestamp - Server timestamp
+     */
+    function handlePlayoutStates(devices, timestamp) {
+      // Select device by index
+      const device = devices[CONFIG.deviceIndex];
+
+      if (!device) {
+        // Device not found at specified index
+        if (devices.length === 0) {
+          console.warn('[overlay] No devices received from server');
+        } else {
+          console.warn(`[overlay] Device index ${CONFIG.deviceIndex} not found (${devices.length} devices available)`);
+        }
+        updateOverlay({
+          state: 'offline',
+          timecode: '--:--:--:--',
+          filename: 'No device',
+          connected: false
+        });
+        return;
+      }
+
+      // Update timestamp and reset fade timer
+      lastUpdateTime = Date.now();
+      resetFadeTimeout();
+
+      // Update the overlay with device state
+      updateOverlay(device);
+    }
+
+    /**
+     * Updates the overlay DOM elements with new device state.
+     * Uses differential updates to prevent flicker.
+     * All text updates use textContent for XSS safety.
+     *
+     * @param {Object} device - Device state object
+     */
+    function updateOverlay(device) {
+      const isOffline = device.connected === false || device.state === 'offline';
+      const state = isOffline ? 'offline' : device.state;
+      const timecode = device.timecode || '00:00:00:00';
+      const filename = device.filename || '';
+
+      // Only update DOM if values have changed - prevents flicker
+      if (cachedState.state !== state) {
+        // Update state dot class
+        stateDot.className = `state-dot ${state}`;
+        cachedState.state = state;
+        console.log('[overlay] State changed:', state);
+      }
+
+      if (cachedState.timecode !== timecode) {
+        // XSS-safe: textContent escapes HTML
+        timecodeEl.textContent = timecode;
+        cachedState.timecode = timecode;
+      }
+
+      if (cachedState.filename !== filename) {
+        // XSS-safe: textContent escapes HTML
+        filenameEl.textContent = filename;
+        cachedState.filename = filename;
+      }
+
+      if (cachedState.isOffline !== isOffline) {
+        // Show OFFLINE text when disconnected
+        if (isOffline) {
+          filenameEl.textContent = 'OFFLINE';
+          filenameEl.classList.add('offline-text');
+        } else {
+          filenameEl.classList.remove('offline-text');
+        }
+        cachedState.isOffline = isOffline;
+      }
+
+      // Ensure overlay is visible
+      overlay.classList.remove('faded', 'hidden');
+    }
+
+    // -------------------------------------------------------------------------
+    // Fade Timeout Management
+    // -------------------------------------------------------------------------
+
+    /**
+     * Resets the fade timeout timer.
+     * Called when new data is received.
+     */
+    function resetFadeTimeout() {
+      if (fadeTimeout) {
+        clearTimeout(fadeTimeout);
+        fadeTimeout = null;
+      }
+
+      // If fade is disabled (0), don't set timeout
+      if (CONFIG.fadeTimeoutSec === 0) {
+        return;
+      }
+
+      fadeTimeout = setTimeout(() => {
+        console.log('[overlay] No data received - fading overlay');
+        overlay.classList.add('faded');
+      }, CONFIG.fadeTimeoutSec * 1000);
+    }
+
+    // -------------------------------------------------------------------------
+    // Startup
+    // -------------------------------------------------------------------------
+
+    // Apply configuration on load
+    applyConfiguration();
+
+    // Start WebSocket connection
+    connect();
+
+    console.log('[overlay] SuperDash overlay initialised');
+    console.log(`[overlay] Monitoring device index: ${CONFIG.deviceIndex}`);
+  </script>
+</body>
+</html>

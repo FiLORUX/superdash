@@ -5,103 +5,812 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>SuperDash Control</title>
   <style>
+    /**
+     * SuperDash Control Panel Styles
+     *
+     * Provides configuration interface for SuperDash playout monitoring.
+     * Generates valid config.json that can be saved to the server.
+     */
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: sans-serif;
-      background: #121212;
-      color: #fff;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #111;
+      color: #eee;
       margin: 0;
       padding: 2rem;
+      line-height: 1.5;
     }
+
     h1 {
       font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: #fff;
+    }
+
+    h2 {
+      font-size: 1.2rem;
+      margin-top: 2rem;
+      margin-bottom: 1rem;
+      color: #aaa;
+      border-bottom: 1px solid #333;
+      padding-bottom: 0.5rem;
+    }
+
+    .section {
+      background: #1a1a1a;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
       margin-bottom: 1rem;
     }
-    .device {
-      background: #1e1e1e;
-      padding: 1rem;
-      border-radius: 0.5rem;
-      margin-bottom: 1rem;
+
+    .form-group {
+      flex: 1;
+      min-width: 150px;
     }
+
+    .form-group.narrow {
+      flex: 0 0 100px;
+      min-width: 100px;
+    }
+
     label {
       display: block;
-      margin-bottom: 0.5rem;
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 0.3rem;
     }
+
     input, select {
-      padding: 0.4rem;
-      font-size: 1rem;
-      margin-bottom: 1rem;
       width: 100%;
-      border: none;
-      border-radius: 0.3rem;
+      padding: 0.6rem;
+      font-size: 1rem;
+      background: #222;
+      border: 1px solid #333;
+      border-radius: 4px;
+      color: #fff;
     }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #00bcd4;
+    }
+
+    input::placeholder {
+      color: #555;
+    }
+
+    select {
+      cursor: pointer;
+    }
+
+    /* Framerate badge styling */
+    .framerate-note {
+      font-size: 0.75rem;
+      color: #f80;
+      margin-top: 0.2rem;
+    }
+
     button {
       background: #00bcd4;
       border: none;
       padding: 0.6rem 1.2rem;
-      border-radius: 0.4rem;
+      border-radius: 4px;
       font-size: 1rem;
       color: #fff;
       cursor: pointer;
-      margin-right: 0.5rem;
+      transition: background 0.2s;
     }
+
     button:hover {
       background: #0097a7;
+    }
+
+    button.secondary {
+      background: #333;
+    }
+
+    button.secondary:hover {
+      background: #444;
+    }
+
+    button.danger {
+      background: #c62828;
+    }
+
+    button.danger:hover {
+      background: #d32f2f;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    /* Device list */
+    .device-card {
+      background: #222;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-left: 4px solid #666;
+    }
+
+    .device-card.hyperdeck {
+      border-left-color: #ff9800;
+    }
+
+    .device-card.vmix {
+      border-left-color: #4caf50;
+    }
+
+    .device-card.casparcg {
+      border-left-color: #2196f3;
+    }
+
+    .device-info {
+      flex: 1;
+    }
+
+    .device-name {
+      font-weight: bold;
+      font-size: 1.1rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .device-details {
+      font-size: 0.85rem;
+      color: #888;
+    }
+
+    .device-type-badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 3px;
+      font-size: 0.7rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-left: 0.5rem;
+    }
+
+    .device-type-badge.hyperdeck {
+      background: rgba(255, 152, 0, 0.2);
+      color: #ff9800;
+    }
+
+    .device-type-badge.vmix {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4caf50;
+    }
+
+    .device-type-badge.casparcg {
+      background: rgba(33, 150, 243, 0.2);
+      color: #2196f3;
+    }
+
+    .device-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .device-actions button {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.85rem;
+    }
+
+    /* CasparCG-specific fields */
+    .casparcg-fields {
+      display: none;
+    }
+
+    .casparcg-fields.visible {
+      display: flex;
+    }
+
+    /* JSON output */
+    #json-output {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 1rem;
+      font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+      font-size: 0.85rem;
+      color: #0f0;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 400px;
+      overflow: auto;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: #555;
+    }
+
+    /* Info text */
+    .info-text {
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 1rem;
     }
   </style>
 </head>
 <body>
   <h1>SuperDash Configuration</h1>
-  <div id="formContainer">
-    <div class="device">
-      <label>Device Name</label>
-      <input type="text" id="name" placeholder="e.g. HyperDeck 1"/>
-      <label>Device IP</label>
-      <input type="text" id="ip" placeholder="e.g. 192.168.1.100"/>
-      <label>Device Type</label>
-      <select id="type">
-        <option value="hyperdeck">HyperDeck</option>
-        <option value="casparcg">CasparCG</option>
-        <option value="vmix">vMix</option>
-      </select>
-      <button onclick="addDevice()">Add Device</button>
+  <p class="info-text">Configure playout servers and global settings. Export JSON to update config.json.</p>
+
+  <!-- Global Settings -->
+  <div class="section">
+    <h2>Global Settings</h2>
+    <div class="form-row">
+      <div class="form-group narrow">
+        <label for="defaultFramerate">Default FPS</label>
+        <select id="defaultFramerate">
+          <option value="25">25</option>
+          <option value="29.97">29.97 (DF)</option>
+          <option value="30">30</option>
+          <option value="50" selected>50</option>
+          <option value="59.94">59.94 (DF)</option>
+          <option value="60">60</option>
+        </select>
+      </div>
+      <div class="form-group narrow">
+        <label for="updateInterval">Update Rate</label>
+        <select id="updateInterval">
+          <option value="50">50ms (20 Hz)</option>
+          <option value="100" selected>100ms (10 Hz)</option>
+          <option value="200">200ms (5 Hz)</option>
+          <option value="500">500ms (2 Hz)</option>
+        </select>
+      </div>
+      <div class="form-group narrow">
+        <label for="webSocketPort">WS Port</label>
+        <input type="number" id="webSocketPort" value="3050" min="1024" max="65535" />
+      </div>
     </div>
   </div>
-  <div id="deviceList"></div>
+
+  <!-- Add Device Form -->
+  <div class="section">
+    <h2>Add Device</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="deviceName">Device Name</label>
+        <input type="text" id="deviceName" placeholder="e.g. HyperDeck ISO A" />
+      </div>
+      <div class="form-group narrow">
+        <label for="deviceType">Type</label>
+        <select id="deviceType">
+          <option value="hyperdeck">HyperDeck</option>
+          <option value="vmix">vMix</option>
+          <option value="casparcg">CasparCG</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="deviceIp">IP Address</label>
+        <input type="text" id="deviceIp" placeholder="e.g. 192.168.0.101" />
+      </div>
+      <div class="form-group narrow">
+        <label for="devicePort">Port</label>
+        <input type="number" id="devicePort" placeholder="Auto" min="1" max="65535" />
+      </div>
+      <div class="form-group narrow">
+        <label for="deviceFramerate">FPS</label>
+        <select id="deviceFramerate">
+          <option value="">Default</option>
+          <option value="25">25</option>
+          <option value="29.97">29.97 (DF)</option>
+          <option value="30">30</option>
+          <option value="50">50</option>
+          <option value="59.94">59.94 (DF)</option>
+          <option value="60">60</option>
+        </select>
+        <div id="framerateNote" class="framerate-note"></div>
+      </div>
+    </div>
+    <div class="form-row casparcg-fields" id="casparcgFields">
+      <div class="form-group narrow">
+        <label for="deviceChannel">Channel</label>
+        <input type="number" id="deviceChannel" value="1" min="1" max="16" />
+      </div>
+      <div class="form-group narrow">
+        <label for="deviceLayer">Layer</label>
+        <input type="number" id="deviceLayer" value="10" min="1" max="100" />
+      </div>
+    </div>
+    <div class="button-row">
+      <button id="addDeviceBtn">Add Device</button>
+    </div>
+  </div>
+
+  <!-- Device List -->
+  <div class="section">
+    <h2>Configured Devices</h2>
+    <div id="deviceList">
+      <div class="empty-state">No devices configured yet</div>
+    </div>
+  </div>
+
+  <!-- JSON Output -->
+  <div class="section">
+    <h2>Export Configuration</h2>
+    <p class="info-text">Copy this JSON and save it to config.json, then restart the server.</p>
+    <div id="json-output"></div>
+    <div class="button-row">
+      <button id="copyJsonBtn">Copy to Clipboard</button>
+      <button id="downloadJsonBtn" class="secondary">Download config.json</button>
+    </div>
+  </div>
 
   <script>
-    let devices = [];
+    /**
+     * SuperDash Control Panel
+     *
+     * Client-side configuration interface for SuperDash.
+     * Generates valid config.json for the server.
+     *
+     * Architecture:
+     * - All DOM updates use textContent for XSS safety
+     * - State is maintained in memory and rendered on change
+     * - JSON output is regenerated on every state change
+     */
 
-    function renderDevices() {
-      const container = document.getElementById('deviceList');
-      container.innerHTML = '';
-      devices.forEach((d, i) => {
-        const div = document.createElement('div');
-        div.className = 'device';
-        div.innerHTML = \`
-          <strong>\${d.name}</strong><br/>
-          Type: \${d.type} — IP: \${d.ip}<br/>
-          <button onclick="removeDevice(\${i})">Remove</button>
-        \`;
-        container.appendChild(div);
-      });
+    // -------------------------------------------------------------------------
+    // State
+    // -------------------------------------------------------------------------
+
+    /**
+     * Configuration state.
+     * @type {Object}
+     */
+    const state = {
+      settings: {
+        defaultFramerate: 50,
+        updateIntervalMs: 100,
+        webSocketPort: 3050,
+        defaultPorts: {
+          hyperdeck: 9993,
+          vmix: 8088,
+          casparcg: 6250
+        }
+      },
+      servers: []
+    };
+
+    /** @type {number} Next device ID */
+    let nextId = 1;
+
+    // -------------------------------------------------------------------------
+    // DOM References
+    // -------------------------------------------------------------------------
+
+    const elements = {
+      defaultFramerate: document.getElementById('defaultFramerate'),
+      updateInterval: document.getElementById('updateInterval'),
+      webSocketPort: document.getElementById('webSocketPort'),
+      deviceName: document.getElementById('deviceName'),
+      deviceType: document.getElementById('deviceType'),
+      deviceIp: document.getElementById('deviceIp'),
+      devicePort: document.getElementById('devicePort'),
+      deviceFramerate: document.getElementById('deviceFramerate'),
+      deviceChannel: document.getElementById('deviceChannel'),
+      deviceLayer: document.getElementById('deviceLayer'),
+      casparcgFields: document.getElementById('casparcgFields'),
+      framerateNote: document.getElementById('framerateNote'),
+      deviceList: document.getElementById('deviceList'),
+      jsonOutput: document.getElementById('json-output'),
+      addDeviceBtn: document.getElementById('addDeviceBtn'),
+      copyJsonBtn: document.getElementById('copyJsonBtn'),
+      downloadJsonBtn: document.getElementById('downloadJsonBtn')
+    };
+
+    // -------------------------------------------------------------------------
+    // Default Ports
+    // -------------------------------------------------------------------------
+
+    const DEFAULT_PORTS = {
+      hyperdeck: 9993,
+      vmix: 8088,
+      casparcg: 6250
+    };
+
+    // -------------------------------------------------------------------------
+    // Event Handlers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Updates global settings from form inputs.
+     */
+    function updateGlobalSettings() {
+      state.settings.defaultFramerate = parseFloat(elements.defaultFramerate.value);
+      state.settings.updateIntervalMs = parseInt(elements.updateInterval.value, 10);
+      state.settings.webSocketPort = parseInt(elements.webSocketPort.value, 10);
+      renderJson();
     }
 
-    function addDevice() {
-      const name = document.getElementById('name').value.trim();
-      const ip = document.getElementById('ip').value.trim();
-      const type = document.getElementById('type').value;
-      if (name && ip) {
-        devices.push({ name, ip, type });
-        renderDevices();
+    /**
+     * Shows/hides CasparCG-specific fields based on device type.
+     */
+    function updateTypeSpecificFields() {
+      const type = elements.deviceType.value;
+      if (type === 'casparcg') {
+        elements.casparcgFields.classList.add('visible');
+      } else {
+        elements.casparcgFields.classList.remove('visible');
+      }
+
+      // Update port placeholder to show default
+      const defaultPort = DEFAULT_PORTS[type];
+      elements.devicePort.placeholder = defaultPort ? String(defaultPort) : 'Auto';
+    }
+
+    /**
+     * Updates framerate note when drop-frame rate is selected.
+     */
+    function updateFramerateNote() {
+      const fps = parseFloat(elements.deviceFramerate.value);
+      if (fps === 29.97 || fps === 59.94) {
+        elements.framerateNote.textContent = 'Uses drop-frame timecode';
+      } else {
+        elements.framerateNote.textContent = '';
       }
     }
 
-    function removeDevice(index) {
-      devices.splice(index, 1);
-      renderDevices();
+    /**
+     * Adds a new device from the form inputs.
+     */
+    function addDevice() {
+      const name = elements.deviceName.value.trim();
+      const type = elements.deviceType.value;
+      const ip = elements.deviceIp.value.trim();
+
+      // Validation
+      if (!name) {
+        alert('Please enter a device name');
+        elements.deviceName.focus();
+        return;
+      }
+
+      if (!ip || !isValidIp(ip)) {
+        alert('Please enter a valid IP address');
+        elements.deviceIp.focus();
+        return;
+      }
+
+      // Build device object
+      const device = {
+        id: nextId++,
+        name: name,
+        type: type,
+        ip: ip
+      };
+
+      // Add port if specified (otherwise use default)
+      const portValue = elements.devicePort.value.trim();
+      if (portValue) {
+        device.port = parseInt(portValue, 10);
+      } else {
+        device.port = DEFAULT_PORTS[type];
+      }
+
+      // Add framerate if specified
+      const framerateValue = elements.deviceFramerate.value;
+      if (framerateValue) {
+        device.framerate = parseFloat(framerateValue);
+      }
+
+      // Add CasparCG-specific fields
+      if (type === 'casparcg') {
+        device.channel = parseInt(elements.deviceChannel.value, 10) || 1;
+        device.layer = parseInt(elements.deviceLayer.value, 10) || 10;
+      }
+
+      // Add to state and render
+      state.servers.push(device);
+      renderDeviceList();
+      renderJson();
+
+      // Clear form
+      elements.deviceName.value = '';
+      elements.deviceIp.value = '';
+      elements.devicePort.value = '';
+      elements.deviceFramerate.value = '';
+      elements.deviceChannel.value = '1';
+      elements.deviceLayer.value = '10';
+      elements.deviceName.focus();
     }
 
-    // TODO: Hook to backend WebSocket to load/save config.json
+    /**
+     * Removes a device by ID.
+     * @param {number} id - Device ID to remove
+     */
+    function removeDevice(id) {
+      const index = state.servers.findIndex(d => d.id === id);
+      if (index !== -1) {
+        state.servers.splice(index, 1);
+        renderDeviceList();
+        renderJson();
+      }
+    }
+
+    /**
+     * Moves a device up in the list.
+     * @param {number} id - Device ID to move
+     */
+    function moveDeviceUp(id) {
+      const index = state.servers.findIndex(d => d.id === id);
+      if (index > 0) {
+        const device = state.servers.splice(index, 1)[0];
+        state.servers.splice(index - 1, 0, device);
+        renderDeviceList();
+        renderJson();
+      }
+    }
+
+    /**
+     * Moves a device down in the list.
+     * @param {number} id - Device ID to move
+     */
+    function moveDeviceDown(id) {
+      const index = state.servers.findIndex(d => d.id === id);
+      if (index !== -1 && index < state.servers.length - 1) {
+        const device = state.servers.splice(index, 1)[0];
+        state.servers.splice(index + 1, 0, device);
+        renderDeviceList();
+        renderJson();
+      }
+    }
+
+    /**
+     * Copies JSON to clipboard.
+     */
+    async function copyToClipboard() {
+      const json = generateJson();
+      try {
+        await navigator.clipboard.writeText(json);
+        elements.copyJsonBtn.textContent = 'Copied!';
+        setTimeout(() => {
+          elements.copyJsonBtn.textContent = 'Copy to Clipboard';
+        }, 2000);
+      } catch (error) {
+        alert('Failed to copy to clipboard. Please select and copy manually.');
+      }
+    }
+
+    /**
+     * Downloads config.json file.
+     */
+    function downloadJson() {
+      const json = generateJson();
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'config.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // -------------------------------------------------------------------------
+    // Validation
+    // -------------------------------------------------------------------------
+
+    /**
+     * Validates an IP address.
+     * @param {string} ip - IP address to validate
+     * @returns {boolean} True if valid
+     */
+    function isValidIp(ip) {
+      // Simple IPv4 validation
+      const parts = ip.split('.');
+      if (parts.length !== 4) return false;
+      for (const part of parts) {
+        const num = parseInt(part, 10);
+        if (isNaN(num) || num < 0 || num > 255) return false;
+        if (part !== String(num)) return false; // No leading zeros
+      }
+      return true;
+    }
+
+    // -------------------------------------------------------------------------
+    // Rendering
+    // -------------------------------------------------------------------------
+
+    /**
+     * Renders the device list.
+     * Uses textContent exclusively for XSS safety.
+     */
+    function renderDeviceList() {
+      elements.deviceList.innerHTML = '';
+
+      if (state.servers.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-state';
+        empty.textContent = 'No devices configured yet';
+        elements.deviceList.appendChild(empty);
+        return;
+      }
+
+      for (const device of state.servers) {
+        const card = document.createElement('div');
+        card.className = `device-card ${device.type}`;
+
+        // Device info section
+        const info = document.createElement('div');
+        info.className = 'device-info';
+
+        // Name and type badge
+        const nameRow = document.createElement('div');
+        nameRow.className = 'device-name';
+
+        const nameText = document.createElement('span');
+        nameText.textContent = device.name;
+        nameRow.appendChild(nameText);
+
+        const badge = document.createElement('span');
+        badge.className = `device-type-badge ${device.type}`;
+        badge.textContent = device.type.toUpperCase();
+        nameRow.appendChild(badge);
+
+        info.appendChild(nameRow);
+
+        // Details
+        const details = document.createElement('div');
+        details.className = 'device-details';
+
+        let detailText = `${device.ip}:${device.port}`;
+        if (device.framerate) {
+          detailText += ` \u2022 ${device.framerate} fps`;
+          if (device.framerate === 29.97 || device.framerate === 59.94) {
+            detailText += ' (DF)';
+          }
+        }
+        if (device.type === 'casparcg') {
+          detailText += ` \u2022 Ch${device.channel}/L${device.layer}`;
+        }
+
+        details.textContent = detailText;
+        info.appendChild(details);
+
+        card.appendChild(info);
+
+        // Actions
+        const actions = document.createElement('div');
+        actions.className = 'device-actions';
+
+        const upBtn = document.createElement('button');
+        upBtn.className = 'secondary';
+        upBtn.textContent = '\u25B2';
+        upBtn.title = 'Move up';
+        upBtn.addEventListener('click', () => moveDeviceUp(device.id));
+        actions.appendChild(upBtn);
+
+        const downBtn = document.createElement('button');
+        downBtn.className = 'secondary';
+        downBtn.textContent = '\u25BC';
+        downBtn.title = 'Move down';
+        downBtn.addEventListener('click', () => moveDeviceDown(device.id));
+        actions.appendChild(downBtn);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'danger';
+        removeBtn.textContent = 'Remove';
+        removeBtn.addEventListener('click', () => removeDevice(device.id));
+        actions.appendChild(removeBtn);
+
+        card.appendChild(actions);
+
+        elements.deviceList.appendChild(card);
+      }
+    }
+
+    /**
+     * Generates JSON configuration.
+     * @returns {string} Formatted JSON string
+     */
+    function generateJson() {
+      // Build clean output (remove internal IDs)
+      const output = {
+        settings: {
+          defaultFramerate: state.settings.defaultFramerate,
+          updateIntervalMs: state.settings.updateIntervalMs,
+          webSocketPort: state.settings.webSocketPort,
+          defaultPorts: state.settings.defaultPorts
+        },
+        servers: state.servers.map((device, index) => {
+          const clean = {
+            id: index + 1, // Sequential IDs in output
+            name: device.name,
+            type: device.type,
+            ip: device.ip,
+            port: device.port
+          };
+
+          if (device.framerate) {
+            clean.framerate = device.framerate;
+          }
+
+          if (device.type === 'casparcg') {
+            clean.channel = device.channel;
+            clean.layer = device.layer;
+          }
+
+          return clean;
+        })
+      };
+
+      return JSON.stringify(output, null, 2);
+    }
+
+    /**
+     * Renders JSON output.
+     */
+    function renderJson() {
+      elements.jsonOutput.textContent = generateJson();
+    }
+
+    // -------------------------------------------------------------------------
+    // Event Binding
+    // -------------------------------------------------------------------------
+
+    elements.defaultFramerate.addEventListener('change', updateGlobalSettings);
+    elements.updateInterval.addEventListener('change', updateGlobalSettings);
+    elements.webSocketPort.addEventListener('change', updateGlobalSettings);
+
+    elements.deviceType.addEventListener('change', updateTypeSpecificFields);
+    elements.deviceFramerate.addEventListener('change', updateFramerateNote);
+
+    elements.addDeviceBtn.addEventListener('click', addDevice);
+    elements.copyJsonBtn.addEventListener('click', copyToClipboard);
+    elements.downloadJsonBtn.addEventListener('click', downloadJson);
+
+    // Allow Enter key to submit form
+    const formInputs = [
+      elements.deviceName,
+      elements.deviceIp,
+      elements.devicePort,
+      elements.deviceChannel,
+      elements.deviceLayer
+    ];
+
+    for (const input of formInputs) {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addDevice();
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Initialisation
+    // -------------------------------------------------------------------------
+
+    updateTypeSpecificFields();
+    renderDeviceList();
+    renderJson();
+
+    console.log('[control] SuperDash Control Panel initialised');
   </script>
 </body>
 </html>

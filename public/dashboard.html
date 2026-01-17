@@ -5,22 +5,50 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SuperDash Dashboard</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     html, body {
       margin: 0;
       padding: 0;
       background: #111;
       color: #eee;
-      font-family: 'Segoe UI', sans-serif;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
       height: 100%;
       overflow: hidden;
     }
+
+    #connection-status {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 0.5rem 1rem;
+      background: #c00;
+      color: white;
+      font-size: 0.85rem;
+      text-align: center;
+      z-index: 1000;
+      display: none;
+    }
+
+    #connection-status.visible {
+      display: block;
+    }
+
     #grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: 1rem;
       padding: 1rem;
-      box-sizing: border-box;
+      padding-top: 1rem;
     }
+
+    #grid.has-warning {
+      padding-top: 3rem;
+    }
+
     .deck {
       background: #222;
       border-radius: 1rem;
@@ -28,46 +56,525 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
-      transition: background 0.3s ease;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+      border-left: 6px solid grey;
+      transition: border-color 0.2s ease, opacity 0.3s ease;
+      min-height: 140px;
     }
-    .deck.play { border-left: 6px solid limegreen; }
-    .deck.rec  { border-left: 6px solid red; }
-    .deck.stop { border-left: 6px solid grey; }
-    .label { font-size: 1.2rem; font-weight: bold; margin-bottom: 0.5rem; }
-    .ip { font-size: 0.9rem; color: #aaa; margin-bottom: 1rem; }
-    .tc, .filename {
-      font-family: monospace;
-      font-size: 1rem;
+
+    .deck.play {
+      border-left-color: limegreen;
+    }
+
+    .deck.rec {
+      border-left-color: #f00;
+    }
+
+    .deck.stop {
+      border-left-color: #666;
+    }
+
+    .deck.offline {
+      border-left-color: #333;
+      opacity: 0.6;
+    }
+
+    .deck .label {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .deck .ip {
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 1rem;
+    }
+
+    .deck .tc {
+      font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+      font-size: 1.1rem;
       line-height: 1.6;
+      letter-spacing: 0.05em;
+    }
+
+    .deck .filename {
+      font-family: monospace;
+      font-size: 0.9rem;
+      color: #aaa;
+      margin-top: 0.5rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .deck .state-badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.7rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    .deck.play .state-badge {
+      background: limegreen;
+      color: #000;
+    }
+
+    .deck.rec .state-badge {
+      background: #f00;
+      color: #fff;
+      animation: pulse-rec 1s ease-in-out infinite;
+    }
+
+    .deck.stop .state-badge {
+      background: #444;
+      color: #999;
+    }
+
+    .deck.offline .state-badge {
+      background: #333;
+      color: #666;
+    }
+
+    @keyframes pulse-rec {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .stale-indicator {
+      font-size: 0.7rem;
+      color: #f80;
+      margin-top: 0.25rem;
+    }
+
+    /* Protocol Status Bar */
+    #protocol-status {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      padding: 0.5rem 1rem;
+      background: linear-gradient(180deg, transparent, rgba(0,0,0,0.8));
+      font-size: 0.75rem;
+      z-index: 100;
+    }
+
+    .protocol-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: #666;
+      transition: color 0.3s ease;
+    }
+
+    .protocol-item.active {
+      color: #aaa;
+    }
+
+    .protocol-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #333;
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .protocol-item.active .protocol-indicator {
+      background: limegreen;
+      box-shadow: 0 0 6px limegreen;
+    }
+
+    .protocol-item.disabled .protocol-indicator {
+      background: #444;
+    }
+
+    .protocol-label {
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .protocol-detail {
+      color: #555;
+      font-family: 'SF Mono', 'Consolas', monospace;
+    }
+
+    .protocol-item.active .protocol-detail {
+      color: #777;
+    }
+
+    /* Adjust grid to not overlap status bar */
+    #grid {
+      padding-bottom: 3rem;
     }
   </style>
 </head>
 <body>
+  <div id="connection-status">Disconnected — Attempting to reconnect...</div>
   <div id="grid"></div>
+
+  <div id="protocol-status">
+    <div class="protocol-item" id="ember-status">
+      <span class="protocol-indicator"></span>
+      <span class="protocol-label">Ember+</span>
+      <span class="protocol-detail" id="ember-detail">—</span>
+    </div>
+    <div class="protocol-item" id="tsl-status">
+      <span class="protocol-indicator"></span>
+      <span class="protocol-label">TSL UMD</span>
+      <span class="protocol-detail" id="tsl-detail">—</span>
+    </div>
+  </div>
+
   <script>
-    const socket = new WebSocket('ws://localhost:3050');
+    /**
+     * SuperDash Dashboard Client
+     *
+     * WebSocket client with:
+     * - Automatic reconnection with exponential backoff
+     * - XSS-safe DOM updates using textContent
+     * - Differential rendering (only update changed elements)
+     * - Stale state detection and visual indication
+     */
+
+    const CONFIG = {
+      wsUrl: `ws://${location.hostname || 'localhost'}:3050`,
+      reconnectBaseDelay: 1000,
+      reconnectMaxDelay: 30000,
+      staleThresholdMs: 5000
+    };
+
+    /** @type {WebSocket|null} */
+    let socket = null;
+
+    /** @type {number} */
+    let reconnectAttempt = 0;
+
+    /** @type {NodeJS.Timeout|null} */
+    let reconnectTimeout = null;
+
+    /** @type {Map<number, HTMLElement>} */
+    const deviceCards = new Map();
+
+    /** @type {Map<number, Object>} */
+    const deviceStates = new Map();
+
     const grid = document.getElementById('grid');
+    const connectionStatus = document.getElementById('connection-status');
+    const emberStatus = document.getElementById('ember-status');
+    const emberDetail = document.getElementById('ember-detail');
+    const tslStatus = document.getElementById('tsl-status');
+    const tslDetail = document.getElementById('tsl-detail');
 
-    socket.addEventListener('message', event => {
-      const message = JSON.parse(event.data);
-      if (message.type === 'playoutStates') {
-        grid.innerHTML = '';
-        message.data.forEach(dev => {
-          const card = document.createElement('div');
-          card.className = 'deck ' + dev.state;
-
-          card.innerHTML = \`
-            <div class="label">\${dev.name}</div>
-            <div class="ip">\${dev.ip}</div>
-            <div class="tc">TC: \${dev.timecode}</div>
-            <div class="filename">\${dev.filename}</div>
-          \`;
-
-          grid.appendChild(card);
-        });
+    /**
+     * Establishes WebSocket connection to the server.
+     */
+    function connect() {
+      if (socket && (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN)) {
+        return;
       }
-    });
+
+      console.log(`[dashboard] Connecting to ${CONFIG.wsUrl}`);
+
+      try {
+        socket = new WebSocket(CONFIG.wsUrl);
+      } catch (error) {
+        console.error('[dashboard] Failed to create WebSocket:', error.message);
+        scheduleReconnect();
+        return;
+      }
+
+      socket.addEventListener('open', handleOpen);
+      socket.addEventListener('message', handleMessage);
+      socket.addEventListener('close', handleClose);
+      socket.addEventListener('error', handleError);
+    }
+
+    /**
+     * Handles successful WebSocket connection.
+     */
+    function handleOpen() {
+      console.log('[dashboard] Connected');
+      reconnectAttempt = 0;
+      hideConnectionWarning();
+    }
+
+    /**
+     * Handles incoming WebSocket messages.
+     * @param {MessageEvent} event
+     */
+    function handleMessage(event) {
+      let message;
+      try {
+        message = JSON.parse(event.data);
+      } catch (error) {
+        console.error('[dashboard] Failed to parse message:', error.message);
+        return;
+      }
+
+      if (message.type === 'playoutStates' && Array.isArray(message.data)) {
+        updateDevices(message.data, message.timestamp);
+
+        // Update protocol status if included
+        if (message.protocols) {
+          updateProtocolStatus(message.protocols);
+        }
+      }
+    }
+
+    /**
+     * Handles WebSocket close event.
+     */
+    function handleClose() {
+      console.log('[dashboard] Disconnected');
+      socket = null;
+      showConnectionWarning();
+      scheduleReconnect();
+    }
+
+    /**
+     * Handles WebSocket error event.
+     * @param {Event} event
+     */
+    function handleError(event) {
+      console.error('[dashboard] WebSocket error');
+      // Close event will follow and trigger reconnect
+    }
+
+    /**
+     * Schedules a reconnection attempt with exponential backoff.
+     */
+    function scheduleReconnect() {
+      if (reconnectTimeout) {
+        return; // Already scheduled
+      }
+
+      const delay = Math.min(
+        CONFIG.reconnectBaseDelay * Math.pow(2, reconnectAttempt),
+        CONFIG.reconnectMaxDelay
+      );
+
+      reconnectAttempt++;
+      console.log(`[dashboard] Reconnecting in ${delay / 1000}s (attempt ${reconnectAttempt})`);
+
+      reconnectTimeout = setTimeout(() => {
+        reconnectTimeout = null;
+        connect();
+      }, delay);
+    }
+
+    /**
+     * Shows the connection warning banner.
+     */
+    function showConnectionWarning() {
+      connectionStatus.classList.add('visible');
+      grid.classList.add('has-warning');
+    }
+
+    /**
+     * Hides the connection warning banner.
+     */
+    function hideConnectionWarning() {
+      connectionStatus.classList.remove('visible');
+      grid.classList.remove('has-warning');
+    }
+
+    /**
+     * Updates device cards using differential rendering.
+     * Only creates new DOM elements for new devices; updates existing ones in place.
+     *
+     * @param {Array<Object>} devices - Array of device state objects
+     * @param {number} serverTimestamp - Server timestamp for stale detection
+     */
+    function updateDevices(devices, serverTimestamp) {
+      const now = performance.timeOrigin + performance.now();
+      const seenIds = new Set();
+
+      for (const device of devices) {
+        seenIds.add(device.id);
+
+        // Check if state is stale (no update from device in threshold)
+        const isStale = device.updated && (now - device.updated > CONFIG.staleThresholdMs);
+
+        let card = deviceCards.get(device.id);
+
+        if (!card) {
+          // Create new card
+          card = createDeviceCard(device);
+          deviceCards.set(device.id, card);
+          grid.appendChild(card);
+        }
+
+        // Update card content (differential)
+        updateDeviceCard(card, device, isStale);
+        deviceStates.set(device.id, device);
+      }
+
+      // Remove cards for devices no longer in the list
+      for (const [id, card] of deviceCards) {
+        if (!seenIds.has(id)) {
+          card.remove();
+          deviceCards.delete(id);
+          deviceStates.delete(id);
+        }
+      }
+    }
+
+    /**
+     * Creates a new device card DOM element.
+     *
+     * @param {Object} device - Device state object
+     * @returns {HTMLElement} - The created card element
+     */
+    function createDeviceCard(device) {
+      const card = document.createElement('div');
+      card.className = 'deck';
+      card.dataset.id = device.id;
+
+      // State badge
+      const stateBadge = document.createElement('span');
+      stateBadge.className = 'state-badge';
+      card.appendChild(stateBadge);
+
+      // Label
+      const label = document.createElement('div');
+      label.className = 'label';
+      card.appendChild(label);
+
+      // IP
+      const ip = document.createElement('div');
+      ip.className = 'ip';
+      card.appendChild(ip);
+
+      // Timecode
+      const tc = document.createElement('div');
+      tc.className = 'tc';
+      card.appendChild(tc);
+
+      // Filename
+      const filename = document.createElement('div');
+      filename.className = 'filename';
+      card.appendChild(filename);
+
+      // Stale indicator
+      const staleIndicator = document.createElement('div');
+      staleIndicator.className = 'stale-indicator';
+      card.appendChild(staleIndicator);
+
+      return card;
+    }
+
+    /**
+     * Updates an existing device card with new state.
+     * Uses textContent for XSS safety.
+     *
+     * @param {HTMLElement} card - The card element to update
+     * @param {Object} device - New device state
+     * @param {boolean} isStale - Whether the device state is stale
+     */
+    function updateDeviceCard(card, device, isStale) {
+      const prevState = deviceStates.get(device.id);
+
+      // Update class for state styling
+      const stateClass = device.connected === false ? 'offline' : device.state;
+      card.className = `deck ${stateClass}`;
+
+      // Update state badge
+      const stateBadge = card.querySelector('.state-badge');
+      const badgeText = device.connected === false ? 'OFFLINE' : device.state.toUpperCase();
+      if (stateBadge.textContent !== badgeText) {
+        stateBadge.textContent = badgeText;
+      }
+
+      // Update label (only if changed)
+      const label = card.querySelector('.label');
+      if (label.textContent !== device.name) {
+        label.textContent = device.name;
+      }
+
+      // Update IP (only if changed)
+      const ip = card.querySelector('.ip');
+      const ipText = `${device.ip}:${device.port}`;
+      if (ip.textContent !== ipText) {
+        ip.textContent = ipText;
+      }
+
+      // Update timecode (always update for smooth display)
+      const tc = card.querySelector('.tc');
+      const tcText = `TC: ${device.timecode}`;
+      if (tc.textContent !== tcText) {
+        tc.textContent = tcText;
+      }
+
+      // Update filename (only if changed)
+      const filename = card.querySelector('.filename');
+      if (filename.textContent !== device.filename) {
+        filename.textContent = device.filename || '';
+      }
+
+      // Update stale indicator
+      const staleIndicator = card.querySelector('.stale-indicator');
+      if (isStale && device.connected !== false) {
+        staleIndicator.textContent = 'Stale data';
+      } else {
+        staleIndicator.textContent = '';
+      }
+    }
+
+    /**
+     * Updates the protocol status bar.
+     *
+     * @param {Object} protocols - Protocol status object from server
+     */
+    function updateProtocolStatus(protocols) {
+      // Update Ember+ status
+      if (protocols.emberPlus) {
+        const ember = protocols.emberPlus;
+        if (ember.running) {
+          emberStatus.classList.add('active');
+          emberStatus.classList.remove('disabled');
+          emberDetail.textContent = `:${ember.port}`;
+        } else if (ember.enabled) {
+          emberStatus.classList.remove('active');
+          emberStatus.classList.remove('disabled');
+          emberDetail.textContent = 'starting...';
+        } else {
+          emberStatus.classList.remove('active');
+          emberStatus.classList.add('disabled');
+          emberDetail.textContent = 'disabled';
+        }
+      }
+
+      // Update TSL UMD status
+      if (protocols.tslUmd) {
+        const tsl = protocols.tslUmd;
+        if (tsl.running) {
+          tslStatus.classList.add('active');
+          tslStatus.classList.remove('disabled');
+          tslDetail.textContent = `${tsl.destinations} dest · ${tsl.deviceCount} dev`;
+        } else if (tsl.enabled) {
+          tslStatus.classList.remove('active');
+          tslStatus.classList.remove('disabled');
+          tslDetail.textContent = 'starting...';
+        } else {
+          tslStatus.classList.remove('active');
+          tslStatus.classList.add('disabled');
+          tslDetail.textContent = 'no destinations';
+        }
+      }
+    }
+
+    // Start connection on page load
+    connect();
   </script>
 </body>
 </html>

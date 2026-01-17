@@ -15,6 +15,7 @@
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
+const express = require('express');
 const WebSocket = require('ws');
 
 const HyperDeckClient = require('./hyperdeck-client');
@@ -309,10 +310,65 @@ function initialiseClients() {
 }
 
 // -----------------------------------------------------------------------------
+// HTTP Server with Express
+// -----------------------------------------------------------------------------
+
+const app = express();
+const httpServer = http.createServer(app);
+
+// Serve static files from public directory
+const publicDir = path.join(__dirname, '..', 'public');
+app.use(express.static(publicDir));
+
+// Health endpoint for monitoring
+app.get('/health', (req, res) => {
+  const devices = Array.from(deviceStates.values()).map(d => ({
+    id: d.id,
+    name: d.name,
+    type: d.type,
+    connected: d.connected,
+    state: d.state
+  }));
+
+  const connectedDevices = devices.filter(d => d.connected).length;
+
+  res.json({
+    status: connectedDevices > 0 ? 'healthy' : 'degraded',
+    uptime: process.uptime(),
+    timestamp: Date.now(),
+    version: require('../package.json').version,
+    devices: {
+      total: devices.length,
+      connected: connectedDevices,
+      list: devices
+    },
+    protocols: {
+      websocket: {
+        clients: connectedClients.size
+      },
+      emberPlus: {
+        enabled: emberProvider !== null,
+        running: emberProvider?.isRunning || false,
+        port: config.settings.emberPlusPort || 9000
+      },
+      tslUmd: {
+        enabled: tslSender !== null,
+        running: tslSender?.isRunning || false,
+        destinations: config.settings.tslUmdDestinations?.length || 0
+      }
+    },
+    memory: {
+      heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+      heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+      unit: 'MB'
+    }
+  });
+});
+
+// -----------------------------------------------------------------------------
 // WebSocket Server
 // -----------------------------------------------------------------------------
 
-const httpServer = http.createServer();
 const wss = new WebSocket.Server({ server: httpServer });
 
 /** @type {Set<WebSocket>} */
@@ -472,8 +528,11 @@ function scheduleNextUpdate() {
 const PORT = config.settings.webSocketPort;
 
 httpServer.listen(PORT, async () => {
-  console.log(`[ws] WebSocket server running on ws://localhost:${PORT}`);
-  console.log(`[ws] Serving ${config.servers.length} devices`);
+  console.log(`[server] SuperDash running on http://localhost:${PORT}`);
+  console.log(`[server] Dashboard: http://localhost:${PORT}/dashboard.html`);
+  console.log(`[server] Health:    http://localhost:${PORT}/health`);
+  console.log(`[server] WebSocket: ws://localhost:${PORT}`);
+  console.log(`[server] Monitoring ${config.servers.length} devices`);
 
   // Initialise protocol clients
   initialiseClients();

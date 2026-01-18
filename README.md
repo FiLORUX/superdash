@@ -69,7 +69,7 @@ cp config.example.json config.json
 npm start
 ```
 
-Open `http://localhost:3050/dashboard.html` in a browser.
+Open `http://localhost:3050/` in a browser for the navigation page.
 
 ---
 
@@ -90,16 +90,16 @@ Copy `config.example.json` to `config.json` and adjust for your environment:
     },
     "emberPlusPort": 9000,
     "tslUmdDestinations": [
-      { "host": "192.168.1.100", "port": 4003 }
+      { "host": "10.13.37.100", "port": 4003 }
     ],
     "tslUmdScreen": 0
   },
   "servers": [
     {
       "id": 1,
-      "name": "CasparCG 1",
+      "name": "CasparCG LTS",
       "type": "casparcg",
-      "ip": "192.168.1.10"
+      "ip": "10.13.37.10"
     }
   ]
 }
@@ -115,23 +115,46 @@ Copy `config.example.json` to `config.json` and adjust for your environment:
 
 ---
 
-## Output Modes
+## Display Modes
+
+### Index (`/`)
+
+Navigation page with links to all display modes and live health status.
 
 ### Dashboard (`/dashboard.html`)
 
-Responsive grid displaying all configured devices with live state, timecode, and filename. Scales automatically from 1 to 12 devices.
+Multi-device monitoring grid for control room displays. Shows all configured playout and recording devices on a single screen with live state, timecode, and filename. Scales dynamically from 1 to 12 devices.
 
-### Overlay (`/overlay.html`)
+**Use case:** Dedicated control room monitor for unified playout visibility.
 
-Transparent overlay for multiviewer integration. Shows single-device status with timecode bar and state indicator.
+### Fullscreen Display (`/gui.html`)
 
-### GUI (`/gui.html`)
+Large-format single-device display with prominent timecode, filename, progress bar, and state indicator. Keyboard navigation (arrow keys) to switch between devices. Designed for high visibility at a distance.
 
-Fullscreen countdown view for operator displays or prompters.
+**Use case:** Confidence monitors, prompter screens, operator displays.
+
+**URL parameters:**
+- `device` — Device index (default: 0)
+
+Example: `/gui.html?device=2`
+
+### Multiviewer Overlay (`/overlay.html`)
+
+Transparent overlay for SDI keying and multiviewer compositing. Superimpose timecode and state information on VB/VT playout sources in your multiviewer. Configurable corner position, background opacity, and stale-data fade timeout.
+
+**Use case:** Timecode burn-in on multiviewer tiles showing playout sources.
+
+**URL parameters:**
+- `device` — Device index (default: 0)
+- `position` — Corner placement: `bottom-left`, `bottom-right`, `top-left`, `top-right` (default: bottom-left)
+- `opacity` — Background opacity 0–1 (default: 0.85)
+- `fadeTimeout` — Seconds until fade on stale data, 0 to disable (default: 3)
+
+Example: `/overlay.html?device=1&position=top-right&opacity=0.7`
 
 ### Control Panel (`/control.html`)
 
-Configuration interface for adding and managing devices.
+Configuration interface for device management. Add, modify, and test device connections. Simulate states for integration testing.
 
 ---
 
@@ -229,9 +252,10 @@ superdash/
 │   ├── tsl-umd-sender.js      # TSL UMD v5.0 sender
 │   └── __tests__/             # Jest test suites
 ├── public/
-│   ├── dashboard.html         # Multi-device grid
-│   ├── overlay.html           # Transparent overlay
-│   ├── gui.html               # Fullscreen countdown
+│   ├── index.html             # Navigation page
+│   ├── dashboard.html         # Multi-device control room grid
+│   ├── gui.html               # Fullscreen confidence monitor
+│   ├── overlay.html           # Transparent multiviewer overlay
 │   └── control.html           # Configuration panel
 ├── research/                  # Protocol documentation
 ├── config.example.json        # Configuration template

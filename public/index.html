@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SuperDash</title>
+  <style>
+    /**
+     * SuperDash Index Page
+     * Simple navigation to the various display modes.
+     */
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      background: #0a0a0a;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 60px 24px;
+    }
+
+    header {
+      margin-bottom: 48px;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+
+    .tagline {
+      font-size: 1.1rem;
+      color: #888;
+    }
+
+    .pages {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .page-card {
+      display: block;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 24px;
+      text-decoration: none;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .page-card:hover {
+      background: #222;
+      border-color: #444;
+    }
+
+    .page-card h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .page-card p {
+      font-size: 0.95rem;
+      color: #999;
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .page-card .use-case {
+      font-size: 0.85rem;
+      color: #666;
+      font-style: italic;
+    }
+
+    .page-card .params {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #333;
+      font-family: 'SF Mono', 'Consolas', monospace;
+      font-size: 0.8rem;
+      color: #6a9955;
+    }
+
+    footer {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid #222;
+      font-size: 0.85rem;
+      color: #555;
+    }
+
+    footer a {
+      color: #888;
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      color: #fff;
+    }
+
+    .status-row {
+      display: flex;
+      gap: 24px;
+      margin-top: 12px;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #444;
+    }
+
+    .status-dot.ok {
+      background: #00c853;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>SuperDash</h1>
+      <p class="tagline">Real-time playout monitoring for broadcast environments</p>
+    </header>
+
+    <div class="pages">
+      <a href="/dashboard.html" class="page-card">
+        <h2>Dashboard</h2>
+        <p>
+          Multi-device monitoring grid for control room displays. Shows all configured
+          playout and recording devices on a single screen with live state, timecode,
+          and filename. Scales dynamically from 1 to 12 devices.
+        </p>
+        <span class="use-case">Dedicated control room monitor for unified playout visibility</span>
+      </a>
+
+      <a href="/gui.html" class="page-card">
+        <h2>Fullscreen Display</h2>
+        <p>
+          Large-format single-device display with prominent timecode and state indicator.
+          Keyboard navigation to switch between devices. Designed for high visibility
+          at a distance.
+        </p>
+        <span class="use-case">Confidence monitors, prompter screens, operator displays</span>
+        <div class="params">?device=0</div>
+      </a>
+
+      <a href="/overlay.html" class="page-card">
+        <h2>Multiviewer Overlay</h2>
+        <p>
+          Transparent overlay for SDI keying and multiviewer compositing. Superimpose
+          timecode and state on VB/VT playout sources. Configurable position, opacity,
+          and fade timeout.
+        </p>
+        <span class="use-case">Timecode burn-in on multiviewer tiles showing playout sources</span>
+        <div class="params">?device=0&amp;position=bottom-left&amp;opacity=0.85&amp;fadeTimeout=3</div>
+      </a>
+
+      <a href="/control.html" class="page-card">
+        <h2>Control Panel</h2>
+        <p>
+          Configuration interface for device management. Add, modify, and test device
+          connections. Simulate states for integration testing.
+        </p>
+        <span class="use-case">System configuration and testing</span>
+      </a>
+    </div>
+
+    <footer>
+      <div>
+        <a href="/health">Health endpoint</a> &middot;
+        WebSocket on port 3050 &middot;
+        Ember+ on port 9000
+      </div>
+      <div class="status-row">
+        <div class="status-item">
+          <span class="status-dot" id="wsDot"></span>
+          <span id="wsStatus">Checking...</span>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    /**
+     * Simple health check to show connection status.
+     */
+    async function checkHealth() {
+      const dot = document.getElementById('wsDot');
+      const status = document.getElementById('wsStatus');
+
+      try {
+        const response = await fetch('/health');
+        if (response.ok) {
+          const data = await response.json();
+          dot.classList.add('ok');
+          status.textContent = `${data.devices.connected}/${data.devices.total} devices connected`;
+        } else {
+          status.textContent = 'Server error';
+        }
+      } catch (error) {
+        status.textContent = 'Server offline';
+      }
+    }
+
+    checkHealth();
+    setInterval(checkHealth, 5000);
+  </script>
+</body>
+</html>

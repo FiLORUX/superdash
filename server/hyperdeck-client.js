@@ -157,6 +157,9 @@ class HyperDeckClient extends EventEmitter {
       filename: ''
     };
 
+    // Active slot tracking (HyperDecks have 2 SSD slots)
+    this.activeSlot = 1;
+
     // Bind methods to preserve context
     this._handleConnect = this._handleConnect.bind(this);
     this._handleData = this._handleData.bind(this);
@@ -221,9 +224,8 @@ class HyperDeckClient extends EventEmitter {
       this._sendCommand('notify: transport: true');
       this._sendCommand('notify: slot: true');
 
-      // Request initial state
+      // Request initial state (transport info will tell us the active slot)
       this._sendCommand('transport info');
-      this._sendCommand('slot info: slot id: 1');
     }, 100);
 
     // Start periodic polling as backup
@@ -345,6 +347,7 @@ class HyperDeckClient extends EventEmitter {
    * - status: play, record, preview, stopped, etc.
    * - timecode: HH:MM:SS:FF
    * - display_timecode: HH:MM:SS:FF (preferred if available)
+   * - active_slot: Currently active slot (1 or 2)
    * - clip_id: Current clip identifier
    *
    * @param {Object} fields - Parsed response fields
@@ -363,6 +366,19 @@ class HyperDeckClient extends EventEmitter {
       newState.timecode = this._normaliseTimecode(fields.display_timecode);
     } else if (fields.timecode) {
       newState.timecode = this._normaliseTimecode(fields.timecode);
+    }
+
+    // Track active slot and request slot info if it changed
+    if (fields.active_slot) {
+      const newSlot = parseInt(fields.active_slot, 10);
+      if (!isNaN(newSlot) && newSlot !== this.activeSlot) {
+        this.activeSlot = newSlot;
+        // Request slot info for the newly active slot
+        this._sendCommand(`slot info: slot id: ${this.activeSlot}`);
+      } else if (newSlot === this.activeSlot && !this.currentState.filename) {
+        // First transport info after connect — request slot info
+        this._sendCommand(`slot info: slot id: ${this.activeSlot}`);
+      }
     }
 
     // Update and emit if changed
@@ -477,7 +493,7 @@ class HyperDeckClient extends EventEmitter {
     this.pollInterval = setInterval(() => {
       if (this.connected) {
         this._sendCommand('transport info');
-        this._sendCommand('slot info: slot id: 1');
+        this._sendCommand(`slot info: slot id: ${this.activeSlot}`);
       }
     }, this.pollIntervalMs);
   }

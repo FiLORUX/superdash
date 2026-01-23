@@ -1,0 +1,35 @@
+[Unit]
+Description=SuperDash Playout Dashboard
+Documentation=https://github.com/FiLORUX/superdash
+After=network.target
+
+[Service]
+Type=simple
+User=superdash
+Group=superdash
+WorkingDirectory=/opt/superdash
+ExecStart=/usr/bin/node server/server.js
+Restart=always
+RestartSec=5
+
+# Environment
+Environment=NODE_ENV=production
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/superdash
+
+# Resource limits
+MemoryMax=512M
+TasksMax=100
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=superdash
+
+[Install]
+WantedBy=multi-user.target

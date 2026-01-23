@@ -264,9 +264,20 @@ superdash/
 
 ---
 
+## Production Deployment
+
+For systemd-based Linux servers, see [deploy/README.md](deploy/README.md) for:
+
+- Service user setup
+- systemd unit installation
+- Firewall configuration
+- Update procedures
+
+---
+
 ## Requirements
 
-- Node.js 18 LTS or later
+- Node.js 20 LTS or later
 - Network access to playout devices
 - UDP port 6250 open for CasparCG OSC (if used)
 - TCP port 9000 available for Ember+ provider

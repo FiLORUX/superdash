@@ -284,9 +284,9 @@ For systemd-based Linux servers, see [deploy/README.md](deploy/README.md) for:
 
 ---
 
-## License
+## Licence
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT Licence — see [LICENSE](LICENSE) for details.
 
 ---
 
@@ -295,3 +295,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 Built for broadcast environments where downtime is not an option.
 
 Protocol documentation sourced from Lawo (Ember+) and TSL Products (UMD).
+
+---
+
+David Thåst · [thåst.se](https://xn--thst-roa.se) · [FiLORUX](https://github.com/FiLORUX)
